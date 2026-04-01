@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Admin - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>body{padding-bottom:0;}</style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="sidebar-logo"><h2>Conitek</h2><span>Admin Panel</span></div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Products</a>
+            <a href="categories.html" class="nav-item active"><span class="nav-icon">📂</span> Categories</a>
+            <a href="orders.html" class="nav-item"><span class="nav-icon">🛍️</span> Orders</a>
+            <a href="settlements.html" class="nav-item"><span class="nav-icon">💰</span> Settlements</a>
+            <a href="analytics.html" class="nav-item"><span class="nav-icon">📈</span> Analytics</a>
+            <div style="margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.1);">
+                <a href="/" class="nav-item"><span class="nav-icon">🏠</span> Store</a>
+                <button class="nav-item" onclick="sessionStorage.removeItem('adminAuth');location='index.html'"><span class="nav-icon">🚪</span> Logout</button>
+            </div>
+        </aside>
+        
+        <main class="admin-main">
+            <div class="admin-header">
+                <h1>Categories</h1>
+                <button class="btn btn-primary" onclick="showCategoryForm()">+ Add Category</button>
+            </div>
+            
+            <!-- Category Form Modal -->
+            <div class="modal-overlay" id="categoryModal">
+                <div class="modal" style="max-width:500px;">
+                    <button class="modal-close" onclick="hideCategoryForm()">✕</button>
+                    <h2 class="mb-2" id="catFormTitle">Add Category</h2>
+                    <form onsubmit="saveCategory(event)">
+                        <input type="hidden" id="catId">
+                        <div class="form-group">
+                            <label>Category Name *</label>
+                            <input type="text" class="form-control" id="catName" required placeholder="Category name">
+                        </div>
+                        <div class="form-group">
+                            <label>Parent Category (leave empty for main category)</label>
+                            <select class="form-control" id="catParent"><option value="">None (Main Category)</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" id="catDescription" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Image URL</label>
+                            <input type="url" class="form-control" id="catImage" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label>Sort Order</label>
+                            <input type="number" class="form-control" id="catSort" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="catActive" checked>
+                                <label for="catActive" style="margin:0;">Active</label>
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button type="submit" class="btn btn-primary">Save Category</button>
+                            <button type="button" class="btn btn-ghost" onclick="hideCategoryForm()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="categoriesContent"><div class="page-loader"><div class="loading-spinner"></div></div></div>
+        </main>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-client.js"></script>
+    <script>
+        if (sessionStorage.getItem('adminAuth') !== 'true') location = 'index.html';
+        
+        document.addEventListener('DOMContentLoaded', loadCats);
+        
+        async function loadCats() {
+            const container = document.getElementById('categoriesContent');
+            const { data: categories } = await DB.getAllCategories();
+            
+            // Populate parent select
+            const parentSelect = document.getElementById('catParent');
+            parentSelect.innerHTML = '<option value="">None (Main Category)</option>';
+            (categories || []).filter(c => !c.parent_id).forEach(c => {
+                parentSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+            
+            if (!categories || categories.length === 0) {
+                container.innerHTML = '<div class="empty-state"><h3>No categories</h3></div>';
+                return;
+            }
+            
+            const parents = categories.filter(c => !c.parent_id);
+            
+            container.innerHTML = `
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead><tr><th>Category</th><th>Type</th><th>Status</th><th>Order</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            ${categories.map(c => {
+                                const parentName = c.parent_id ? categories.find(p => p.id === c.parent_id)?.name : null;
+                                return `
+                                    <tr>
+                                        <td>
+                                            <div class="product-cell">
+                                                ${c.image_url ? `<div class="thumb"><img src="${c.image_url}" alt=""></div>` : ''}
+                                                <div>
+                                                    <strong>${c.name}</strong>
+                                                    ${parentName ? `<br><small class="text-muted">↳ ${parentName}</small>` : ''}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="tag ${c.parent_id ? 'tag-info' : 'tag-primary'}">${c.parent_id ? 'Sub' : 'Main'}</span></td>
+                                        <td><span class="tag ${c.is_active ? 'tag-success' : 'tag-danger'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+                                        <td>${c.sort_order}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <button class="edit-btn" onclick='editCat(${JSON.stringify(c)})'>Edit</button>
+                                                <button class="delete-btn" onclick="deleteCat('${c.id}')">Delete</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        function showCategoryForm() {
+            document.getElementById('catFormTitle').textContent = 'Add Category';
+            document.getElementById('catId').value = '';
+            document.getElementById('catName').value = '';
+            document.getElementById('catParent').value = '';
+            document.getElementById('catDescription').value = '';
+            document.getElementById('catImage').value = '';
+            document.getElementById('catSort').value = '0';
+            document.getElementById('catActive').checked = true;
+            document.getElementById('categoryModal').classList.add('active');
+        }
+        
+        function hideCategoryForm() {
+            document.getElementById('categoryModal').classList.remove('active');
+        }
+        
+        function editCat(cat) {
+            document.getElementById('catFormTitle').textContent = 'Edit Category';
+            document.getElementById('catId').value = cat.id;
+            document.getElementById('catName').value = cat.name;
+            document.getElementById('catParent').value = cat.parent_id || '';
+            document.getElementById('catDescription').value = cat.description || '';
+            document.getElementById('catImage').value = cat.image_url || '';
+            document.getElementById('catSort').value = cat.sort_order;
+            document.getElementById('catActive').checked = cat.is_active;
+            document.getElementById('categoryModal').classList.add('active');
+        }
+        
+        async function saveCategory(e) {
+            e.preventDefault();
+            const id = document.getElementById('catId').value;
+            const name = document.getElementById('catName').value.trim();
+            
+            const catData = {
+                name: name,
+                slug: slugify(name) + (id ? '' : '-' + Date.now().toString(36)),
+                parent_id: document.getElementById('catParent').value || null,
+                description: document.getElementById('catDescription').value.trim() || null,
+                image_url: document.getElementById('catImage').value.trim() || null,
+                sort_order: parseInt(document.getElementById('catSort').value) || 0,
+                is_active: document.getElementById('catActive').checked
+            };
+            
+            let result;
+            if (id) {
+                delete catData.slug;
+                result = await DB.updateCategory(id, catData);
+            } else {
+                result = await DB.createCategory(catData);
+            }
+            
+            if (result.error) {
+                Toast.error('Failed: ' + result.error.message);
+                return;
+            }
+            
+            Toast.success('Category saved!');
+            hideCategoryForm();
+            loadCats();
+        }
+        
+        async function deleteCat(id) {
+            if (!confirm('Delete this category?')) return;
+            const { error } = await DB.deleteCategory(id);
+            if (error) { Toast.error('Failed: ' + error.message); return; }
+            Toast.success('Deleted');
+            loadCats();
+        }
+    </script>
+</body>
+</html>
