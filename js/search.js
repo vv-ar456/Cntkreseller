@@ -34,3 +34,61 @@ async function performSearch(query) {
             <div class="empty-state">
                 <div class="empty-icon">🔍</div>
                 <h3>No results found</h3>
+// js/search.js (continued)
+
+                <p>Try searching with different keywords</p>
+                <a href="/" class="btn btn-primary">Browse All Products</a>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="search-results-count">${products.length} results for "${query}"</div>
+        <div class="products-grid">
+            ${products.map(p => renderProductCard(p)).join('')}
+        </div>
+    `;
+    
+    attachLikeEvents();
+}
+
+async function loadFilteredProducts(filters, title) {
+    const container = document.getElementById('searchResults');
+    container.innerHTML = `<div class="page-loader"><div class="loading-spinner"></div></div>`;
+    
+    const { data: products } = await DB.getProducts({ ...filters, limit: 50 });
+    
+    if (!products || products.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No products found</h3>
+                <a href="/" class="btn btn-primary">Go Home</a>
+            </div>
+        `;
+        return;
+    }
+    
+    const titleEl = document.getElementById('searchTitle');
+    if (titleEl) titleEl.textContent = title;
+    
+    container.innerHTML = `
+        <div class="search-results-count">${products.length} products</div>
+        <div class="products-grid">
+            ${products.map(p => renderProductCard(p)).join('')}
+        </div>
+    `;
+    
+    attachLikeEvents();
+}
+
+function handleSearchInput(e) {
+    if (e.key === 'Enter') {
+        const term = e.target.value.trim();
+        if (term) {
+            window.history.pushState({}, '', `search.html?q=${encodeURIComponent(term)}`);
+            performSearch(term);
+        }
+    }
+}
