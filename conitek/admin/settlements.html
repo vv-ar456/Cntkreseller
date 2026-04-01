@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settlements - Admin - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>body{padding-bottom:0;}</style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="sidebar-logo"><h2>Conitek</h2><span>Admin Panel</span></div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Products</a>
+            <a href="categories.html" class="nav-item"><span class="nav-icon">📂</span> Categories</a>
+            <a href="orders.html" class="nav-item"><span class="nav-icon">🛍️</span> Orders</a>
+            <a href="settlements.html" class="nav-item active"><span class="nav-icon">💰</span> Settlements</a>
+            <a href="analytics.html" class="nav-item"><span class="nav-icon">📈</span> Analytics</a>
+            <div style="margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.1);">
+                <a href="/" class="nav-item"><span class="nav-icon">🏠</span> Store</a>
+                <button class="nav-item" onclick="sessionStorage.removeItem('adminAuth');location='index.html'"><span class="nav-icon">🚪</span> Logout</button>
+            </div>
+        </aside>
+        
+        <main class="admin-main">
+            <div class="admin-header"><h1>Settlement Management</h1></div>
+            
+            <div class="admin-filters">
+                <select class="filter-select" id="settlementFilter" onchange="loadSettlements()">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="eligible">Eligible</option>
+                    <option value="processing">Processing</option>
+                    <option value="settled">Settled</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            
+            <div id="settlementsContent"><div class="page-loader"><div class="loading-spinner"></div></div></div>
+        </main>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-client.js"></script>
+    <script>
+        if (sessionStorage.getItem('adminAuth') !== 'true') location = 'index.html';
+        
+        document.addEventListener('DOMContentLoaded', loadSettlements);
+        
+        async function loadSettlements() {
+            const container = document.getElementById('settlementsContent');
+            container.innerHTML = '<div class="page-loader"><div class="loading-spinner"></div></div>';
+            
+            const { data: settlements } = await DB.getAllSettlements();
+            const filter = document.getElementById('settlementFilter').value;
+            
+            let filtered = settlements || [];
+            if (filter) filtered = filtered.filter(s => s.status === filter);
+            
+            // Summary stats
+            const totals = {
+                pending: 0, eligible: 0, processing: 0, settled: 0, cancelled: 0
+            };
+            (settlements || []).forEach(s => {
+                if (totals.hasOwnProperty(s.status)) {
+                    totals[s.status] += parseFloat(s.margin_amount);
+                }
+            });
+            
+            container.innerHTML = `
+                <div class="settlement-cards mb-2">
+                    <div class="settlement-card">
+                        <div class="icon" style="background:var(--warning-bg);color:var(--warning);">⏳</div>
+                        <h4>Pending</h4>
+                        <div class="amount">${formatCurrency(totals.pending)}</div>
+                    </div>
+                    <div class="settlement-card">
+                        <div class="icon" style="background:var(--info-bg);color:var(--info);">✅</div>
+                        <h4>Eligible</h4>
+                        <div class="amount">${formatCurrency(totals.eligible)}</div>
+                    </div>
+                    <div class="settlement-card">
+                        <div class="icon" style="background:var(--success-bg);color:var(--success);">💰</div>
+                        <h4>Settled</h4>
+                        <div class="amount">${formatCurrency(totals.settled)}</div>
+                    </div>
+                </div>
+                
+                ${filtered.length > 0 ? `
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>User</th><th>Order</th><th>Margin</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                ${filtered.map(s => `
+                                    <tr>
+                                        <td>${s.profiles?.full_name || '-'}<br><small class="text-muted">${s.profiles?.phone || ''}</small></td>
+                                        <td>${s.orders?.order_number || '-'}</td>
+                                        <td><strong>${formatCurrency(s.margin_amount)}</strong></td>
+                                        <td><span class="tag ${
+                                            s.status === 'settled' ? 'tag-success' :
+                                            s.status === 'eligible' ? 'tag-info' :
+                                            s.status === 'cancelled' ? 'tag-danger' :
+                                            s.status === 'processing' ? 'tag-warning' : 'tag-warning'
+                                        }">${s.status}</span></td>
+                                        <td>${formatDate(s.created_at)}</td>
+                                        <td>
+                                            <div class="actions">
+                                                ${s.status === 'eligible' ? `
+                                                    <button class="edit-btn" onclick="processSettlement('${s.id}')">Mark Processing</button>
+                                                ` : ''}
+                                                ${s.status === 'processing' ? `
+                                                    <button class="view-btn" onclick="settleAmount('${s.id}')">Mark Settled</button>
+                                                ` : ''}
+                                                ${['pending', 'eligible'].includes(s.status) ? `
+                                                    <button class="delete-btn" onclick="cancelSettlement('${s.id}')">Cancel</button>
+                                                ` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<div class="empty-state"><h3>No settlements</h3></div>'}
+            `;
+        }
+        
+        async function processSettlement(id) {
+            await DB.updateSettlement(id, { status: 'processing' });
+            Toast.success('Settlement marked as processing');
+            loadSettlements();
+        }
+        
+        async function settleAmount(id) {
+            const ref = prompt('Enter transaction reference (optional):');
+            await DB.updateSettlement(id, { 
+                status: 'settled', 
+                settled_at: new Date().toISOString(),
+                transaction_ref: ref || null 
+            });
+            Toast.success('Settlement completed!');
+            loadSettlements();
+        }
+        
+        async function cancelSettlement(id) {
+            if (!confirm('Cancel this settlement?')) return;
+            await DB.updateSettlement(id, { status: 'cancelled' });
+            Toast.success('Settlement cancelled');
+            loadSettlements();
+        }
+    </script>
+</body>
+</html>
