@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header"><div class="container"><a href="/" class="header-logo"><span>Conitek</span></a><div class="header-search"><span class="search-icon">🔍</span><input type="text" placeholder="Search..." onkeydown="handleSearch(event)"></div><div class="header-actions"><a href="cart.html" class="header-action-btn">🛒<span class="badge cart-badge hidden">0</span></a><button class="btn btn-primary btn-sm" id="loginBtn" onclick="Auth.showLoginModal()">Login</button><div style="position:relative;"><button class="user-menu-trigger hidden" id="userMenuTrigger"><span class="avatar" id="userAvatar">U</span><span class="user-name" id="userName">User</span></button><div class="user-dropdown" id="userDropdown"><a href="account.html">👤 Account</a><a href="orders.html">📦 Orders</a><div class="divider"></div><button class="logout-btn" onclick="Auth.signOut()">🚪 Logout</button></div></div></div></div></header>
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header"><h1 id="categoryTitle">Categories</h1></div>
+            <div id="categoryContent"><div class="page-loader"><div class="loading-spinner"></div></div></div>
+        </div>
+    </main>
+    <nav class="bottom-nav"><a href="/" class="bottom-nav-item"><span class="nav-icon">🏠</span>Home</a><a href="category.html" class="bottom-nav-item active"><span class="nav-icon">📂</span>Categories</a><a href="cart.html" class="bottom-nav-item"><span class="nav-icon">🛒</span>Cart</a><a href="orders.html" class="bottom-nav-item"><span class="nav-icon">📦</span>Orders</a><a href="account.html" class="bottom-nav-item"><span class="nav-icon">👤</span>Account</a></nav>
+    <div class="modal-overlay" id="authModal"><div class="modal auth-modal"><button class="modal-close" onclick="Auth.hideLoginModal()">✕</button><div class="auth-header"><div class="logo">Conitek</div><h2>Login</h2></div><div id="phoneStep"><div class="form-group"><label>Phone</label><input type="tel" class="form-control" id="authPhone" maxlength="10"></div><button class="btn btn-primary btn-full" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">Send OTP</button></div><div id="otpStep" class="hidden"><div class="otp-inputs"><input type="text" maxlength="1" inputmode="numeric"><input type="text" maxlength="1" inputmode="numeric"><input type="text" maxlength="1" inputmode="numeric"><input type="text" maxlength="1" inputmode="numeric"><input type="text" maxlength="1" inputmode="numeric"><input type="text" maxlength="1" inputmode="numeric"></div><button class="btn btn-primary btn-full mt-2" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">Verify</button></div><div id="nameStep" class="hidden"><div class="form-group"><label>Name</label><input type="text" class="form-control" id="authName"></div><button class="btn btn-primary btn-full" onclick="Auth.completeRegistration()">Done</button></div></div></div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="js/supabase-client.js"></script><script src="js/auth.js"></script><script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await Auth.init();
+            setupOTPInputs();
+            setupUserDropdown();
+            
+            const params = new URLSearchParams(window.location.search);
+            const catId = params.get('id');
+            
+            if (catId) {
+                loadCategoryProducts(catId);
+            } else {
+                loadAllCategories();
+            }
+        });
+        
+        async function loadAllCategories() {
+            const container = document.getElementById('categoryContent');
+            const { data: categories } = await DB.getParentCategories();
+            
+            if (!categories || categories.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><h3>No categories yet</h3></div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="categories-grid">
+                    ${categories.map(cat => `
+                        <a href="category.html?id=${cat.id}" class="category-grid-card">
+                            <div class="cat-icon">
+                                <img src="${cat.image_url || placeholderImage(cat.name)}" alt="${cat.name}">
+                            </div>
+                            <h3>${cat.name}</h3>
+                            ${cat.description ? `<p>${cat.description}</p>` : ''}
+                        </a>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        async function loadCategoryProducts(catId) {
+            const container = document.getElementById('categoryContent');
+            container.innerHTML = '<div class="page-loader"><div class="loading-spinner"></div></div>';
+            
+            const [catRes, subCatRes, productsRes] = await Promise.all([
+                supabase.from('categories').select('*').eq('id', catId).single(),
+                DB.getSubCategories(catId),
+                DB.getProducts({ category_id: catId, limit: 50 })
+            ]);
+            
+            const category = catRes.data;
+            const subCategories = subCatRes.data || [];
+            const products = productsRes.data || [];
+            
+            if (category) {
+                document.getElementById('categoryTitle').textContent = category.name;
+            }
+            
+            let html = '';
+            
+            if (subCategories.length > 0) {
+                html += `
+                    <div class="mb-2">
+                        <h3 class="mb-1" style="font-size:16px;">Subcategories</h3>
+                        <div class="categories-scroll">
+                            ${subCategories.map(sc => `
+                                <a href="search.html?category=${sc.id}" class="category-card">
+                                    <div class="cat-image">
+                                        <img src="${sc.image_url || placeholderImage(sc.name)}" alt="${sc.name}">
+                                    </div>
+                                    <div class="cat-name">${sc.name}</div>
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (products.length > 0) {
+                html += `
+                    <div class="search-results-count">${products.length} products</div>
+                    <div class="products-grid">
+                        ${products.map(p => renderProductCard(p)).join('')}
+                    </div>
+                `;
+            } else {
+                html += '<div class="empty-state"><div class="empty-icon">📦</div><h3>No products in this category</h3></div>';
+            }
+            
+            container.innerHTML = html;
+            attachLikeEvents();
+        }
+    </script>
+</body>
+</html>
