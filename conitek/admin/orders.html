@@ -1,223 +1,504 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orders - Admin - Conitek</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
-    <style>body{padding-bottom:0;}</style>
+    <style>
+        body { padding-bottom: 0; }
+        .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .filter-row input, .filter-row select { flex: 1; min-width: 140px; }
+
+        /* ── Status Badges ── */
+        .status-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; text-transform:capitalize; white-space:nowrap; }
+        .status-placed         { background:#e8f4fd; color:#1a7bc4; }
+        .status-confirmed      { background:#e8f0fe; color:#1a4bc4; }
+        .status-processing     { background:#fff3e0; color:#e65100; }
+        .status-shipped        { background:#e8f5e9; color:#2e7d32; }
+        .status-out_for_delivery { background:#f3e5f5; color:#6a1b9a; }
+        .status-delivered      { background:#e0f2f1; color:#00695c; }
+        .status-cancelled      { background:#fce4ec; color:#c62828; }
+        .status-rto_initiated  { background:#fff8e1; color:#f57f17; }
+        .status-rto_completed  { background:#efebe9; color:#4e342e; }
+        .status-returned       { background:#f3e5f5; color:#4a148c; }
+
+        /* ── Order Detail Modal ── */
+        .order-detail-section { margin-bottom: 20px; }
+        .order-detail-section h3 { font-size: 14px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing:.06em; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .detail-item label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 2px; }
+        .detail-item span  { font-size: 14px; font-weight: 500; }
+        .order-items-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .order-items-table th { text-align: left; padding: 6px 10px; background: var(--surface2); color: var(--text2); font-size: 12px; }
+        .order-items-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .order-items-table img { width:40px; height:40px; object-fit:cover; border-radius:6px; }
+        .order-total-row td  { font-weight: 700; background: var(--surface2); }
+        .stat-chip { display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border-radius:8px; padding:6px 14px; font-size:13px; }
+
+        @media(max-width:640px) { .detail-grid { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
-    <div class="admin-layout">
-        <aside class="admin-sidebar">
-            <div class="sidebar-logo"><h2>Conitek</h2><span>Admin Panel</span></div>
-            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
-            <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Products</a>
-            <a href="categories.html" class="nav-item"><span class="nav-icon">📂</span> Categories</a>
-            <a href="orders.html" class="nav-item active"><span class="nav-icon">🛍️</span> Orders</a>
-            <a href="settlements.html" class="nav-item"><span class="nav-icon">💰</span> Settlements</a>
-            <a href="analytics.html" class="nav-item"><span class="nav-icon">📈</span> Analytics</a>
-            <div style="margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.1);">
-                <a href="/" class="nav-item"><span class="nav-icon">🏠</span> Store</a>
-                <button class="nav-item" onclick="sessionStorage.removeItem('adminAuth');location='index.html'"><span class="nav-icon">🚪</span> Logout</button>
-            </div>
-        </aside>
-        
-        <main class="admin-main">
-            <div class="admin-header"><h1>Orders Management</h1></div>
-            
-            <!-- Filters -->
-            <div class="admin-filters">
-                <select class="filter-select" id="statusFilter" onchange="filterOrders()">
-                    <option value="">All Statuses</option>
-                    <option value="placed">Placed</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="out_for_delivery">Out for Delivery</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="rto_initiated">RTO Initiated</option>
-                    <option value="rto_completed">RTO Completed</option>
-                </select>
-                <input type="text" class="filter-input" id="searchFilter" placeholder="Search order number..." oninput="filterOrders()">
-            </div>
-            
-            <!-- Order Update Modal -->
-            <div class="modal-overlay" id="orderModal">
-                <div class="modal" style="max-width:550px;">
-                    <button class="modal-close" onclick="document.getElementById('orderModal').classList.remove('active')">✕</button>
-                    <h2 class="mb-2">Update Order <span id="updateOrderNum"></span></h2>
-                    <input type="hidden" id="updateOrderId">
-                    
-                    <div class="form-group">
-                        <label>Order Status</label>
-                        <select class="form-control" id="updateStatus">
-                            <option value="placed">Placed</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="processing">Processing</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="out_for_delivery">Out for Delivery</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="rto_initiated">RTO Initiated</option>
-                            <option value="rto_completed">RTO Completed</option>
-                            <option value="returned">Returned</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Tracking Number</label>
-                        <input type="text" class="form-control" id="updateTracking" placeholder="Tracking number">
-                    </div>
-                    <div class="form-group">
-                        <label>Tracking URL</label>
-                        <input type="url" class="form-control" id="updateTrackingUrl" placeholder="https://...">
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea class="form-control" id="updateNotes" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="flex gap-1">
-                        <button class="btn btn-primary" onclick="updateOrderStatus()">Update Order</button>
-                        <button class="btn btn-ghost" onclick="document.getElementById('orderModal').classList.remove('active')">Cancel</button>
-                    </div>
+<div class="admin-layout">
+    <aside class="admin-sidebar">
+        <div class="sidebar-logo"><h2>Conitek</h2><span>Admin Panel</span></div>
+        <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+        <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Products</a>
+        <a href="categories.html" class="nav-item"><span class="nav-icon">📂</span> Categories</a>
+        <a href="orders.html" class="nav-item active"><span class="nav-icon">🛍️</span> Orders</a>
+        <a href="settlements.html" class="nav-item"><span class="nav-icon">💰</span> Settlements</a>
+        <a href="analytics.html" class="nav-item"><span class="nav-icon">📈</span> Analytics</a>
+        <div style="margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.1);">
+            <a href="../conitek/index.html" class="nav-item"><span class="nav-icon">🏠</span> View Store</a>
+            <button class="nav-item" onclick="adminLogout()"><span class="nav-icon">🚪</span> Logout</button>
+        </div>
+    </aside>
+
+    <main class="admin-main">
+        <div class="admin-header">
+            <h1>Orders Management</h1>
+            <div id="orderStats" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-row">
+            <input type="text" class="form-control" id="searchFilter" placeholder="🔍 Order #, customer name, phone..." oninput="filterOrders()">
+            <select class="form-control" id="statusFilter" onchange="filterOrders()">
+                <option value="">All Statuses</option>
+                <option value="placed">Placed</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="out_for_delivery">Out for Delivery</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="rto_initiated">RTO Initiated</option>
+                <option value="rto_completed">RTO Completed</option>
+                <option value="returned">Returned</option>
+            </select>
+            <select class="form-control" id="paymentFilter" onchange="filterOrders()">
+                <option value="">All Payments</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+            </select>
+        </div>
+
+        <!-- ══ UPDATE ORDER MODAL ══ -->
+        <div class="modal-overlay" id="orderModal">
+            <div class="modal" style="max-width:550px;">
+                <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+                <h2 class="mb-2">Update Order <span id="updateOrderNum" style="color:var(--primary);"></span></h2>
+                <input type="hidden" id="updateOrderId">
+
+                <div class="form-group">
+                    <label>Order Status</label>
+                    <select class="form-control" id="updateStatus">
+                        <option value="placed">Placed</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="rto_initiated">RTO Initiated</option>
+                        <option value="rto_completed">RTO Completed</option>
+                        <option value="returned">Returned</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tracking Number</label>
+                    <input type="text" class="form-control" id="updateTracking" placeholder="AWB / Tracking number">
+                </div>
+                <div class="form-group">
+                    <label>Tracking URL</label>
+                    <input type="url" class="form-control" id="updateTrackingUrl" placeholder="https://track.delhivery.com/...">
+                </div>
+                <div class="form-group">
+                    <label>Internal Notes</label>
+                    <textarea class="form-control" id="updateNotes" rows="3" placeholder="Notes for internal use..."></textarea>
+                </div>
+
+                <div class="flex gap-1">
+                    <button class="btn btn-primary" onclick="updateOrderStatus()">💾 Update Order</button>
+                    <button class="btn btn-ghost" onclick="closeModal('orderModal')">Cancel</button>
                 </div>
             </div>
-            
-            <div id="ordersContent"><div class="page-loader"><div class="loading-spinner"></div></div></div>
-        </main>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../js/supabase-client.js"></script>
-    <script>
-        if (sessionStorage.getItem('adminAuth') !== 'true') location = 'index.html';
-        
-        let allOrders = [];
-        
-        document.addEventListener('DOMContentLoaded', loadAdminOrders);
-        
-        async function loadAdminOrders() {
-            const container = document.getElementById('ordersContent');
-            const { data } = await DB.getAllOrders();
-            allOrders = data || [];
-            renderOrders(allOrders);
-        }
-        
-        function filterOrders() {
-            const status = document.getElementById('statusFilter').value;
-            const search = document.getElementById('searchFilter').value.toLowerCase();
-            
-            let filtered = allOrders;
-            if (status) filtered = filtered.filter(o => o.order_status === status);
-            if (search) filtered = filtered.filter(o => 
-                o.order_number.toLowerCase().includes(search) || 
-                o.customer_name?.toLowerCase().includes(search) ||
-                o.customer_phone?.includes(search)
-            );
-            
-            renderOrders(filtered);
-        }
-        
-        function renderOrders(orders) {
-            const container = document.getElementById('ordersContent');
-            
-            if (orders.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h3>No orders found</h3></div>';
-                return;
-            }
-            
-            container.innerHTML = `
-                <div class="admin-table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Order</th>
-                                <th>Customer</th>
-                                <th>Amount</th>
-                                <th>Margin</th>
-                                <th>Status</th>
-                                <th>Payment</th>
-                                <th>Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${orders.map(o => `
-                                <tr>
-                                    <td><strong>${o.order_number}</strong></td>
-                                    <td>
-                                        ${o.customer_name || o.profiles?.full_name || '-'}
-                                        <br><small class="text-muted">${o.customer_phone || o.profiles?.phone || ''}</small>
-                                    </td>
-                                    <td><strong>${formatCurrency(o.total_amount)}</strong></td>
-                                    <td><span class="text-success">${formatCurrency(o.total_margin)}</span></td>
-                                    <td><span class="order-status-badge ${o.order_status}">${o.order_status.replace(/_/g,' ')}</span></td>
-                                    <td><span class="tag ${o.payment_status === 'paid' ? 'tag-success' : 'tag-warning'}">${o.payment_status}</span></td>
-                                    <td>${formatDate(o.created_at)}</td>
-                                    <td>
-                                        <div class="actions">
-                                            <button class="edit-btn" onclick="showUpdateOrder('${o.id}', '${o.order_number}', '${o.order_status}', '${o.tracking_number || ''}', '${o.tracking_url || ''}', '${(o.notes || '').replace(/'/g, "\\'")}')">Update</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+        </div>
+
+        <!-- ══ ORDER DETAIL VIEW MODAL ══ -->
+        <div class="modal-overlay" id="orderDetailModal">
+            <div class="modal" style="max-width:800px; max-height:92vh; overflow-y:auto;">
+                <button class="modal-close" onclick="closeModal('orderDetailModal')">✕</button>
+                <div id="orderDetailContent">
+                    <div class="page-loader"><div class="loading-spinner"></div></div>
                 </div>
-            `;
-        }
-        
-        function showUpdateOrder(id, num, status, tracking, trackingUrl, notes) {
-            document.getElementById('updateOrderId').value = id;
-            document.getElementById('updateOrderNum').textContent = '#' + num;
-            document.getElementById('updateStatus').value = status;
-            document.getElementById('updateTracking').value = tracking;
-            document.getElementById('updateTrackingUrl').value = trackingUrl;
-            document.getElementById('updateNotes').value = notes;
-            document.getElementById('orderModal').classList.add('active');
-        }
-        
-        async function updateOrderStatus() {
-            const id = document.getElementById('updateOrderId').value;
-            const status = document.getElementById('updateStatus').value;
-            
-            const updates = {
-                order_status: status,
-                tracking_number: document.getElementById('updateTracking').value.trim() || null,
-                tracking_url: document.getElementById('updateTrackingUrl').value.trim() || null,
-                notes: document.getElementById('updateNotes').value.trim() || null
-            };
-            
-            if (status === 'shipped') updates.shipped_at = new Date().toISOString();
-            if (status === 'delivered') updates.delivered_at = new Date().toISOString();
-            if (status === 'cancelled') updates.cancelled_at = new Date().toISOString();
-            if (status === 'rto_initiated') updates.rto_initiated_at = new Date().toISOString();
-            if (status === 'rto_completed') updates.rto_completed_at = new Date().toISOString();
-            
-            const { error } = await DB.updateOrder(id, updates);
-            if (error) {
-                Toast.error('Failed: ' + error.message);
-                return;
-            }
-            
-            Toast.success('Order updated!');
-            document.getElementById('orderModal').classList.remove('active');
-            loadAdminOrders();
-        }
-    </script>
-</body>
-</html>
-<!-- Add to all admin pages before closing </body> -->
+            </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div id="ordersContent">
+            <div class="page-loader"><div class="loading-spinner"></div></div>
+        </div>
+    </main>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" style="position:fixed;bottom:32px;right:32px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-client.js"></script>
-<script src="../js/admin/admin-auth.js"></script>
+<script>
+// ─── AUTH GUARD ──────────────────────────────────────────────────────────────
+if (sessionStorage.getItem('adminAuth') !== 'true') location.href = 'index.html';
 
-<!-- Then page-specific script: -->
-<!-- dashboard.html → <script src="../js/admin/dashboard.js"></script> -->
-<!-- products.html → <script src="../js/admin/products.js"></script> -->
-<!-- categories.html → <script src="../js/admin/categories.js"></script> -->
-<!-- orders.html → <script src="../js/admin/orders.js"></script> -->
-<!-- settlements.html → <script src="../js/admin/settlements.js"></script> -->
-<!-- analytics.html → <script src="../js/admin/analytics.js"></script> -->
+function adminLogout() {
+    sessionStorage.removeItem('adminAuth');
+    location.href = 'index.html';
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+const Toast = {
+    show(msg, type = 'info') {
+        const t = document.createElement('div');
+        t.className = `toast toast-${type}`;
+        t.textContent = msg;
+        document.getElementById('toastContainer').appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    },
+    success: (m) => Toast.show(m, 'success'),
+    error:   (m) => Toast.show(m, 'error'),
+    info:    (m) => Toast.show(m, 'info'),
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function formatCurrency(n) {
+    return '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+}
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let allOrders = [];
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', loadAdminOrders);
+
+// ─── LOAD ORDERS ─────────────────────────────────────────────────────────────
+async function loadAdminOrders() {
+    const container = document.getElementById('ordersContent');
+    container.innerHTML = '<div class="page-loader"><div class="loading-spinner"></div></div>';
+    try {
+        const { data } = await DB.getAllOrders();
+        allOrders = data || [];
+        renderStats(allOrders);
+        renderOrders(allOrders);
+    } catch(e) {
+        container.innerHTML = '<div class="empty-state"><h3>Failed to load orders</h3></div>';
+    }
+}
+
+// ─── STATS BAR ───────────────────────────────────────────────────────────────
+function renderStats(orders) {
+    const statsEl = document.getElementById('orderStats');
+    const total     = orders.length;
+    const active    = orders.filter(o => !['delivered','cancelled','returned','rto_completed'].includes(o.order_status)).length;
+    const delivered = orders.filter(o => o.order_status === 'delivered').length;
+    const rto       = orders.filter(o => ['rto_initiated','rto_completed'].includes(o.order_status)).length;
+
+    statsEl.innerHTML = `
+        <div class="stat-chip">📦 Total: <strong>${total}</strong></div>
+        <div class="stat-chip">🔄 Active: <strong>${active}</strong></div>
+        <div class="stat-chip" style="color:#2e7d32;">✅ Delivered: <strong>${delivered}</strong></div>
+        ${rto > 0 ? `<div class="stat-chip" style="color:#e65100;">↩️ RTO: <strong>${rto}</strong></div>` : ''}
+    `;
+}
+
+// ─── FILTER ──────────────────────────────────────────────────────────────────
+function filterOrders() {
+    const q       = document.getElementById('searchFilter').value.toLowerCase();
+    const status  = document.getElementById('statusFilter').value;
+    const payment = document.getElementById('paymentFilter').value;
+
+    let filtered = allOrders;
+    if (q)       filtered = filtered.filter(o =>
+        (o.order_number||'').toLowerCase().includes(q) ||
+        (o.customer_name||'').toLowerCase().includes(q) ||
+        (o.profiles?.full_name||'').toLowerCase().includes(q) ||
+        (o.customer_phone||'').includes(q) ||
+        (o.profiles?.phone||'').includes(q)
+    );
+    if (status)  filtered = filtered.filter(o => o.order_status === status);
+    if (payment) filtered = filtered.filter(o => o.payment_status === payment);
+
+    renderOrders(filtered);
+}
+
+// ─── RENDER ORDERS TABLE ─────────────────────────────────────────────────────
+function renderOrders(orders) {
+    const container = document.getElementById('ordersContent');
+
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div style="font-size:48px;margin-bottom:16px;">🛍️</div>
+                <h3>No orders found</h3>
+                <p>Try changing filters</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="admin-table-container">
+            <div style="padding:12px 16px;color:var(--text2);font-size:14px;">
+                Showing <strong>${orders.length}</strong> order${orders.length !== 1 ? 's' : ''}
+            </div>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Margin</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.map(o => {
+                        const name  = o.customer_name  || o.profiles?.full_name || '-';
+                        const phone = o.customer_phone || o.profiles?.phone     || '';
+                        return `
+                        <tr>
+                            <td>
+                                <strong style="font-family:monospace;">${o.order_number}</strong>
+                                ${o.tracking_number ? `<br><small class="text-muted">📦 ${o.tracking_number}</small>` : ''}
+                            </td>
+                            <td>
+                                <strong>${name}</strong>
+                                ${phone ? `<br><small class="text-muted">📱 ${phone}</small>` : ''}
+                            </td>
+                            <td><strong>${formatCurrency(o.total_amount)}</strong></td>
+                            <td><span style="color:#2e7d32;font-weight:600;">${formatCurrency(o.total_margin)}</span></td>
+                            <td>
+                                <span class="status-badge status-${o.order_status}">
+                                    ${o.order_status.replace(/_/g,' ')}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="tag ${
+                                    o.payment_status === 'paid'     ? 'tag-success' :
+                                    o.payment_status === 'refunded' ? 'tag-warning' : 'tag-danger'
+                                }">
+                                    ${o.payment_status || 'pending'}
+                                </span>
+                            </td>
+                            <td style="white-space:nowrap;font-size:13px;">${formatDate(o.created_at)}</td>
+                            <td>
+                                <div class="actions" style="gap:6px;">
+                                    <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;"
+                                        onclick="showOrderDetail('${o.id}')">👁 View</button>
+                                    <button class="edit-btn"
+                                        onclick="showUpdateModal('${o.id}', '${o.order_number}', '${o.order_status}', '${o.tracking_number||''}', '${(o.tracking_url||'').replace(/'/g,"\\'")}', '${(o.notes||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')">
+                                        ✏️ Update
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+}
+
+// ─── SHOW UPDATE MODAL ───────────────────────────────────────────────────────
+function showUpdateModal(id, num, status, tracking, trackingUrl, notes) {
+    document.getElementById('updateOrderId').value       = id;
+    document.getElementById('updateOrderNum').textContent = '#' + num;
+    document.getElementById('updateStatus').value        = status;
+    document.getElementById('updateTracking').value      = tracking;
+    document.getElementById('updateTrackingUrl').value   = trackingUrl;
+    document.getElementById('updateNotes').value         = notes;
+    document.getElementById('orderModal').classList.add('active');
+}
+
+// ─── UPDATE ORDER ────────────────────────────────────────────────────────────
+async function updateOrderStatus() {
+    const id     = document.getElementById('updateOrderId').value;
+    const status = document.getElementById('updateStatus').value;
+    const now    = new Date().toISOString();
+
+    const updates = {
+        order_status:   status,
+        tracking_number: document.getElementById('updateTracking').value.trim()     || null,
+        tracking_url:    document.getElementById('updateTrackingUrl').value.trim()  || null,
+        notes:           document.getElementById('updateNotes').value.trim()        || null,
+    };
+
+    // Timestamp updates
+    const timestamps = {
+        shipped:          'shipped_at',
+        delivered:        'delivered_at',
+        cancelled:        'cancelled_at',
+        rto_initiated:    'rto_initiated_at',
+        rto_completed:    'rto_completed_at',
+    };
+    if (timestamps[status]) updates[timestamps[status]] = now;
+
+    try {
+        const { error } = await DB.updateOrder(id, updates);
+        if (error) throw error;
+
+        Toast.success('Order updated successfully!');
+        closeModal('orderModal');
+        await loadAdminOrders();
+    } catch(e) {
+        Toast.error('Failed: ' + (e.message || 'Unknown error'));
+    }
+}
+
+// ─── ORDER DETAIL VIEW ───────────────────────────────────────────────────────
+async function showOrderDetail(orderId) {
+    document.getElementById('orderDetailModal').classList.add('active');
+    document.getElementById('orderDetailContent').innerHTML =
+        '<div class="page-loader"><div class="loading-spinner"></div></div>';
+
+    try {
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order) throw new Error('Order not found');
+
+        const name    = order.customer_name  || order.profiles?.full_name || '-';
+        const phone   = order.customer_phone || order.profiles?.phone     || '-';
+        const email   = order.profiles?.email || '-';
+        const items   = order.order_items || [];
+        const addr    = order.shipping_address || {};
+
+        document.getElementById('orderDetailContent').innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+                <div>
+                    <h2 style="margin:0;font-family:monospace;">Order #${order.order_number}</h2>
+                    <small class="text-muted">Placed on ${formatDate(order.created_at)}</small>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span class="status-badge status-${order.order_status}">${order.order_status.replace(/_/g,' ')}</span>
+                    <span class="tag ${order.payment_status === 'paid' ? 'tag-success' : 'tag-warning'}">${order.payment_status || 'pending'}</span>
+                </div>
+            </div>
+
+            <!-- Customer Info -->
+            <div class="order-detail-section">
+                <h3>👤 Customer Details</h3>
+                <div class="detail-grid">
+                    <div class="detail-item"><label>Name</label><span>${name}</span></div>
+                    <div class="detail-item"><label>Phone</label><span>📱 ${phone}</span></div>
+                    <div class="detail-item"><label>Email</label><span>${email}</span></div>
+                    <div class="detail-item"><label>Payment Method</label><span>${order.payment_method || '-'}</span></div>
+                </div>
+            </div>
+
+            <!-- Shipping Address -->
+            <div class="order-detail-section">
+                <h3>📍 Shipping Address</h3>
+                <div style="font-size:14px;line-height:1.6;">
+                    ${addr.name ? `<strong>${addr.name}</strong><br>` : ''}
+                    ${addr.line1 || addr.address_line1 || '-'}
+                    ${addr.line2 || addr.address_line2 ? `<br>${addr.line2 || addr.address_line2}` : ''}
+                    <br>${addr.city || ''} ${addr.state ? '- ' + addr.state : ''} ${addr.pincode || addr.postal_code || ''}
+                    ${addr.phone ? `<br>📱 ${addr.phone}` : ''}
+                </div>
+            </div>
+
+            <!-- Tracking -->
+            ${order.tracking_number ? `
+            <div class="order-detail-section">
+                <h3>🚚 Tracking</h3>
+                <div class="detail-grid">
+                    <div class="detail-item"><label>Tracking Number</label><span style="font-family:monospace;">${order.tracking_number}</span></div>
+                    ${order.tracking_url ? `<div class="detail-item"><label>Track Link</label><span><a href="${order.tracking_url}" target="_blank" style="color:var(--primary);">Open Tracking ↗</a></span></div>` : ''}
+                    ${order.shipped_at   ? `<div class="detail-item"><label>Shipped At</label><span>${formatDate(order.shipped_at)}</span></div>` : ''}
+                    ${order.delivered_at ? `<div class="detail-item"><label>Delivered At</label><span>${formatDate(order.delivered_at)}</span></div>` : ''}
+                </div>
+            </div>` : ''}
+
+            <!-- Order Items -->
+            <div class="order-detail-section">
+                <h3>🛒 Order Items</h3>
+                ${items.length === 0 ? '<p class="text-muted">No items found</p>' : `
+                <table class="order-items-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>MRP</th>
+                            <th>Selling Price</th>
+                            <th>Qty</th>
+                            <th>Total</th>
+                            <th>Margin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:10px;">
+                                        <img src="${item.product_thumbnail || item.products?.thumbnail || ''}" 
+                                             alt="" onerror="this.style.display='none'">
+                                        <div>
+                                            <strong>${item.product_name || item.products?.name || '-'}</strong>
+                                            ${item.variant_details ? `<br><small class="text-muted">${JSON.stringify(item.variant_details)}</small>` : ''}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>${formatCurrency(item.mrp)}</td>
+                                <td>${formatCurrency(item.selling_price || item.unit_price)}</td>
+                                <td>${item.quantity}</td>
+                                <td><strong>${formatCurrency((item.selling_price || item.unit_price) * item.quantity)}</strong></td>
+                                <td><span style="color:#2e7d32;">+${formatCurrency((item.margin || 0) * item.quantity)}</span></td>
+                            </tr>
+                        `).join('')}
+                        <tr class="order-total-row">
+                            <td colspan="4" style="text-align:right;padding-right:16px;">Order Total</td>
+                            <td>${formatCurrency(order.total_amount)}</td>
+                            <td style="color:#2e7d32;">+${formatCurrency(order.total_margin)}</td>
+                        </tr>
+                    </tbody>
+                </table>`}
+            </div>
+
+            <!-- Notes -->
+            ${order.notes ? `
+            <div class="order-detail-section">
+                <h3>📝 Notes</h3>
+                <p style="font-size:14px;background:var(--surface2);padding:12px;border-radius:8px;">${order.notes}</p>
+            </div>` : ''}
+
+            <!-- Action Buttons -->
+            <div class="flex gap-1 mt-2">
+                <button class="btn btn-primary" onclick="
+                    closeModal('orderDetailModal');
+                    showUpdateModal('${order.id}', '${order.order_number}', '${order.order_status}',
+                        '${order.tracking_number||''}',
+                        '${(order.tracking_url||'').replace(/'/g,"\\'")}',
+                        '${(order.notes||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')">
+                    ✏️ Update Order
+                </button>
+                <button class="btn btn-ghost" onclick="closeModal('orderDetailModal')">Close</button>
+            </div>
+        `;
+    } catch(e) {
+        document.getElementById('orderDetailContent').innerHTML =
+            `<div class="empty-state"><h3>Error loading order</h3><p>${e.message}</p></div>`;
+    }
+}
+</script>
+</body>
+</html>
