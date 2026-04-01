@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conitek - Resell & Earn</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="logo.png">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="/" class="header-logo">
+                <img src="logo.png" alt="Conitek" onerror="this.style.display='none'">
+                <span>Conitek</span>
+            </a>
+            
+            <div class="header-search">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search products..." onkeydown="handleSearch(event)">
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-action-btn" id="mobileSearchBtn" style="display:none;">
+                    🔍
+                </button>
+                
+                <a href="notifications.html" class="header-action-btn">
+                    🔔
+                    <span class="badge notif-badge hidden">0</span>
+                </a>
+                
+                <a href="liked.html" class="header-action-btn">
+                    ♡
+                </a>
+                
+                <a href="cart.html" class="header-action-btn">
+                    🛒
+                    <span class="badge cart-badge hidden">0</span>
+                </a>
+                
+                <!-- Login Button -->
+                <button class="btn btn-primary btn-sm" id="loginBtn" onclick="Auth.showLoginModal()">
+                    Login
+                </button>
+                
+                <!-- User Menu -->
+                <div style="position:relative;">
+                    <button class="user-menu-trigger hidden" id="userMenuTrigger">
+                        <span class="avatar" id="userAvatar">U</span>
+                        <span class="user-name" id="userName">User</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="account.html">👤 My Account</a>
+                        <a href="orders.html">📦 My Orders</a>
+                        <a href="payment.html">💰 Payments</a>
+                        <a href="analytics.html">📊 Analytics</a>
+                        <a href="liked.html">💜 Wishlist</a>
+                        <div class="divider"></div>
+                        <button class="logout-btn" onclick="Auth.signOut()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container" id="homePage">
+            <div class="page-loader">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav">
+        <a href="/" class="bottom-nav-item active">
+            <span class="nav-icon">🏠</span>
+            Home
+        </a>
+        <a href="category.html" class="bottom-nav-item">
+            <span class="nav-icon">📂</span>
+            Categories
+        </a>
+        <a href="cart.html" class="bottom-nav-item">
+            <span class="nav-icon">🛒</span>
+            Cart
+            <span class="badge cart-badge hidden">0</span>
+        </a>
+        <a href="orders.html" class="bottom-nav-item">
+            <span class="nav-icon">📦</span>
+            Orders
+        </a>
+        <a href="account.html" class="bottom-nav-item">
+            <span class="nav-icon">👤</span>
+            Account
+        </a>
+    </nav>
+    
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal auth-modal">
+            <button class="modal-close" onclick="Auth.hideLoginModal()">✕</button>
+            
+            <div class="auth-header">
+                <div class="logo">Conitek</div>
+                <h2>Welcome</h2>
+                <p>Login or create account to start reselling</p>
+            </div>
+            
+            <!-- Phone Step -->
+            <div id="phoneStep">
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" class="form-control" id="authPhone" placeholder="Enter 10-digit number" maxlength="10">
+                </div>
+                <button class="btn btn-primary btn-full btn-lg" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">
+                    Send OTP
+                </button>
+            </div>
+            
+            <!-- OTP Step -->
+            <div id="otpStep" class="hidden">
+                <p class="text-center text-muted mb-2">Enter the 6-digit OTP sent to your phone</p>
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                    <input type="text" maxlength="1" inputmode="numeric">
+                </div>
+                <button class="btn btn-primary btn-full btn-lg mt-2" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">
+                    Verify OTP
+                </button>
+                <div class="resend-otp">
+                    <span id="resendTimer"></span>
+                    <button id="resendOtpBtn" onclick="Auth.resendOTP()" disabled>Resend OTP</button>
+                </div>
+            </div>
+            
+            <!-- Name Step (New User) -->
+            <div id="nameStep" class="hidden">
+                <p class="text-center text-muted mb-2">Almost there! Tell us your name</p>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-control" id="authName" placeholder="Enter your full name">
+                </div>
+                <button class="btn btn-primary btn-full btn-lg" onclick="Auth.completeRegistration()">
+                    Complete Registration
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
