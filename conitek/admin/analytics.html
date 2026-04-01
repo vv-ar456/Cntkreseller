@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Admin - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>body{padding-bottom:0;}</style>
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="sidebar-logo"><h2>Conitek</h2><span>Admin Panel</span></div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="products.html" class="nav-item"><span class="nav-icon">📦</span> Products</a>
+            <a href="categories.html" class="nav-item"><span class="nav-icon">📂</span> Categories</a>
+            <a href="orders.html" class="nav-item"><span class="nav-icon">🛍️</span> Orders</a>
+            <a href="settlements.html" class="nav-item"><span class="nav-icon">💰</span> Settlements</a>
+            <a href="analytics.html" class="nav-item active"><span class="nav-icon">📈</span> Analytics</a>
+            <div style="margin-top:auto;padding:16px 24px;border-top:1px solid rgba(255,255,255,0.1);">
+                <a href="/" class="nav-item"><span class="nav-icon">🏠</span> Store</a>
+                <button class="nav-item" onclick="sessionStorage.removeItem('adminAuth');location='index.html'"><span class="nav-icon">🚪</span> Logout</button>
+            </div>
+        </aside>
+        
+        <main class="admin-main" id="analyticsContent">
+            <div class="page-loader"><div class="loading-spinner"></div></div>
+        </main>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-client.js"></script>
+    <script>
+        if (sessionStorage.getItem('adminAuth') !== 'true') location = 'index.html';
+        
+        document.addEventListener('DOMContentLoaded', loadAdminAnalytics);
+        
+        async function loadAdminAnalytics() {
+            const container = document.getElementById('analyticsContent');
+            const data = await DB.getAdminAnalytics();
+            
+            const orders = data.orders;
+            const users = data.users;
+            const products = data.products;
+            const settlements = data.settlements;
+            
+            const totalRevenue = orders.reduce((s, o) => s + (parseFloat(o.total_amount) || 0), 0);
+            const totalMargins = orders.reduce((s, o) => s + (parseFloat(o.total_margin) || 0), 0);
+            const paidOrders = orders.filter(o => o.payment_status === 'paid');
+            const deliveredOrders = orders.filter(o => o.order_status === 'delivered');
+            const rtoOrders = orders.filter(o => ['rto_initiated', 'rto_completed', 'returned', 'cancelled'].includes(o.order_status));
+            
+            // Monthly breakdown
+            const monthlyData = {};
+            orders.forEach(o => {
+                const month = new Date(o.created_at).toLocaleString('en', { month: 'short', year: '2-digit' });
+                if (!monthlyData[month]) monthlyData[month] = { revenue: 0, orders: 0, margin: 0 };
+                monthlyData[month].revenue += parseFloat(o.total_amount) || 0;
+                monthlyData[month].orders++;
+                monthlyData[month].margin += parseFloat(o.total_margin) || 0;
+            });
+            
+            // User registrations monthly
+            const userMonthly = {};
+            users.forEach(u => {
+                const month = new Date(u.created_at).toLocaleString('en', { month: 'short', year: '2-digit' });
+                userMonthly[month] = (userMonthly[month] || 0) + 1;
+            });
+            
+            const maxRev = Math.max(...Object.values(monthlyData).map(d => d.revenue), 1);
+            const maxUsers = Math.max(...Object.values(userMonthly), 1);
+            
+            container.innerHTML = `
+                <div class="admin-header"><h1>Website Analytics</h1></div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">💰</div>
+                        <div class="stat-info"><h3>Total Revenue</h3><div class="stat-value">${formatCurrency(totalRevenue)}</div></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">📊</div>
+                        <div class="stat-info"><h3>Total Margins Generated</h3><div class="stat-value">${formatCurrency(totalMargins)}</div></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue">📦</div>
+                        <div class="stat-info"><h3>Paid Orders</h3><div class="stat-value">${paidOrders.length}</div></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">✅</div>
+                        <div class="stat-info"><h3>Delivered</h3><div class="stat-value">${deliveredOrders.length}</div></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">🔄</div>
+                        <div class="stat-info"><h3>RTO / Cancelled</h3><div class="stat-value">${rtoOrders.length}</div></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">👥</div>
+                        <div class="stat-info"><h3>Total Resellers</h3><div class="stat-value">${users.length}</div></div>
+                    </div>
+                </div>
+                
+                <div class="analytics-charts">
+                    <div class="chart-card">
+                        <h3>Monthly Revenue</h3>
+                        <div class="chart-placeholder">
+                            ${Object.entries(monthlyData).slice(-8).map(([month, d]) => `
+                                <div class="chart-bar-row">
+                                    <span class="bar-label">${month}</span>
+                                    <div class="bar-track"><div class="bar-fill purple" style="width:${(d.revenue/maxRev*100)}%"></div></div>
+                                    <span class="bar-value">${formatCurrency(d.revenue)}</span>
+                                </div>
+                            `).join('') || '<p class="text-muted text-center">No data</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>Monthly Orders</h3>
+                        <div class="chart-placeholder">
+                            ${Object.entries(monthlyData).slice(-8).map(([month, d]) => {
+                                const maxOrders = Math.max(...Object.values(monthlyData).map(x => x.orders), 1);
+                                return `
+                                    <div class="chart-bar-row">
+                                        <span class="bar-label">${month}</span>
+                                        <div class="bar-track"><div class="bar-fill green" style="width:${(d.orders/maxOrders*100)}%"></div></div>
+                                        <span class="bar-value">${d.orders}</span>
+                                    </div>
+                                `;
+                            }).join('') || '<p class="text-muted text-center">No data</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>User Registrations</h3>
+                        <div class="chart-placeholder">
+                            ${Object.entries(userMonthly).slice(-8).map(([month, count]) => `
+                                <div class="chart-bar-row">
+                                    <span class="bar-label">${month}</span>
+                                    <div class="bar-track"><div class="bar-fill orange" style="width:${(count/maxUsers*100)}%"></div></div>
+                                    <span class="bar-value">${count}</span>
+                                </div>
+                            `).join('') || '<p class="text-muted text-center">No data</p>'}
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>Conversion Metrics</h3>
+                        <div style="padding:20px 0;">
+                            <div class="summary-row"><span>Total Orders</span><span class="value fw-700">${orders.length}</span></div>
+                            <div class="summary-row"><span>Successful Payments</span><span class="value fw-700">${paidOrders.length}</span></div>
+                            <div class="summary-row"><span>Delivered Orders</span><span class="value fw-700">${deliveredOrders.length}</span></div>
+                            <div class="summary-row"><span>Delivery Rate</span><span class="value fw-700 text-success">${orders.length > 0 ? (deliveredOrders.length/orders.length*100).toFixed(1) : 0}%</span></div>
+                            <div class="summary-row"><span>RTO Rate</span><span class="value fw-700 text-danger">${orders.length > 0 ? (rtoOrders.length/orders.length*100).toFixed(1) : 0}%</span></div>
+                            <div class="summary-row"><span>Avg Order Value</span><span class="value fw-700">${formatCurrency(orders.length > 0 ? totalRevenue/orders.length : 0)}</span></div>
+                            <div class="summary-row"><span>Avg Margin/Order</span><span class="value fw-700 text-success">${formatCurrency(orders.length > 0 ? totalMargins/orders.length : 0)}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
