@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>body{padding-bottom:0;}</style>
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-logo">
+                <h2>Conitek</h2>
+                <span>Admin Panel</span>
+            </div>
+            <a href="dashboard.html" class="nav-item active">
+                <span class="nav-icon">📊</span> Dashboard
+            </a>
+            <a href="products.html" class="nav-item">
+                <span class="nav-icon">📦</span> Products
+            </a>
+            <a href="categories.html" class="nav-item">
+                <span class="nav-icon">📂</span> Categories
+            </a>
+            <a href="orders.html" class="nav-item">
+                <span class="nav-icon">🛍️</span> Orders
+            </a>
+            <a href="settlements.html" class="nav-item">
+                <span class="nav-icon">💰</span> Settlements
+            </a>
+            <a href="analytics.html" class="nav-item">
+                <span class="nav-icon">📈</span> Analytics
+            </a>
+            <div style="margin-top:auto; padding:16px 24px; border-top:1px solid rgba(255,255,255,0.1);">
+                <a href="/" class="nav-item"><span class="nav-icon">🏠</span> View Store</a>
+                <button class="nav-item" onclick="sessionStorage.removeItem('adminAuth');window.location.href='index.html'">
+                    <span class="nav-icon">🚪</span> Logout
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main -->
+        <main class="admin-main" id="dashboardContent">
+            <div class="page-loader"><div class="loading-spinner"></div></div>
+        </main>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-client.js"></script>
+    <script>
+        if (sessionStorage.getItem('adminAuth') !== 'true') {
+            window.location.href = 'index.html';
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+        
+        async function loadDashboard() {
+            const container = document.getElementById('dashboardContent');
+            
+            const analytics = await DB.getAdminAnalytics();
+            const orders = analytics.orders;
+            const users = analytics.users;
+            const products = analytics.products;
+            const settlements = analytics.settlements;
+            
+            const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+            const totalOrders = orders.length;
+            const totalUsers = users.length;
+            const activeProducts = products.filter(p => p.is_active).length;
+            const paidOrders = orders.filter(o => o.payment_status === 'paid').length;
+            const pendingSettlements = settlements.filter(s => s.status === 'eligible' || s.status === 'pending')
+                .reduce((sum, s) => sum + parseFloat(s.margin_amount), 0);
+            
+            const statusCounts = {};
+            orders.forEach(o => {
+                statusCounts[o.order_status] = (statusCounts[o.order_status] || 0) + 1;
+            });
+            
+            container.innerHTML = `
+                <div class="admin-header">
+                    <h1>Dashboard</h1>
+                    <span class="text-muted">${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">💰</div>
+                        <div class="stat-info">
+                            <h3>Total Revenue</h3>
+                            <div class="stat-value">${formatCurrency(totalRevenue)}</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue">📦</div>
+                        <div class="stat-info">
+                            <h3>Total Orders</h3>
+                            <div class="stat-value">${totalOrders}</div>
+                            <div class="stat-change positive">${paidOrders} paid</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">👥</div>
+                        <div class="stat-info">
+                            <h3>Total Users</h3>
+                            <div class="stat-value">${totalUsers}</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">📊</div>
+                        <div class="stat-info">
+                            <h3>Active Products</h3>
+                            <div class="stat-value">${activeProducts}</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">⏳</div>
+                        <div class="stat-info">
+                            <h3>Pending Settlements</h3>
+                            <div class="stat-value">${formatCurrency(pendingSettlements)}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Order Status Breakdown -->
+                <div class="card mb-2">
+                    <div class="card-header"><h2>Order Status Overview</h2></div>
+                    <div class="stats-grid" style="margin-bottom:0;">
+                        ${Object.entries(statusCounts).map(([status, count]) => `
+                            <div class="stat-card" style="padding:14px;">
+                                <span class="order-status-badge ${status}" style="margin-right:12px;">${status.replace(/_/g,' ')}</span>
+                                <strong style="font-size:20px;">${count}</strong>
+                            </div>
+                        `).join('') || '<p class="text-muted">No orders yet</p>'}
+                    </div>
+                </div>
+                
+                <!-- Recent Orders -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Recent Orders</h2>
+                        <a href="orders.html" class="btn btn-ghost btn-sm">View All →</a>
+                    </div>
+                    <div class="admin-table-container" style="border:none;">
+                        <table class="admin-table">
+                            <thead><tr><th>Order</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                            <tbody>
+                                ${(await DB.getAllOrders({ limit: 10 })).data?.map(o => `
+                                    <tr>
+                                        <td><strong>${o.order_number}</strong><br><small class="text-muted">${o.customer_name || o.profiles?.full_name || '-'}</small></td>
+                                        <td>${formatCurrency(o.total_amount)}</td>
+                                        <td><span class="order-status-badge ${o.order_status}">${o.order_status.replace(/_/g,' ')}</span></td>
+                                        <td>${formatDate(o.created_at)}</td>
+                                    </tr>
+                                `).join('') || '<tr><td colspan="4" class="text-center text-muted">No orders</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
