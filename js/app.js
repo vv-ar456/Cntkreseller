@@ -357,14 +357,20 @@ async function loadHomePage() {
     const container = document.getElementById('homePage');
     if (!container) return;
 
-    container.innerHTML = '<div class="page-loader"><div class="loading-spinner"></div></div>';
+    container.innerHTML = `
+        <div style="padding:40px 20px;text-align:center;">
+            <div style="width:36px;height:36px;border:3px solid #eee;border-top-color:#6c47ff;
+                        border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;"></div>
+            <p style="color:#999;font-size:14px;">Loading products...</p>
+        </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
 
     try {
         const [categoriesRes, featuredRes, specialRes, allProductsRes] = await Promise.all([
             DB.getParentCategories(),
-            DB.getProducts({ is_featured: true, limit: 8 }),
-            DB.getProducts({ is_special: true, limit: 8 }),
-            DB.getProducts({ limit: 16 })
+            DB.getProducts({ is_featured: true, limit: 10 }),
+            DB.getProducts({ is_special: true, limit: 10 }),
+            DB.getProducts({ limit: 20 })
         ]);
 
         const categories  = categoriesRes.data  || [];
@@ -372,88 +378,64 @@ async function loadHomePage() {
         const special     = specialRes.data      || [];
         const allProducts = allProductsRes.data  || [];
 
+        // inject home page styles
+        if (!document.getElementById('homeStyles')) {
+            const s = document.createElement('style');
+            s.id = 'homeStyles';
+            s.textContent = HOME_STYLES;
+            document.head.appendChild(s);
+        }
+
         let html = '';
 
-        // ── Hero ──
+        // ── Trust Strip ──
         html += `
-            <div class="hero-banner">
-                <div class="hero-pattern"></div>
-                <div>
-                    <h1>Resell &amp; Earn with Conitek</h1>
-                    <p>Add your margin to products, share with customers, and earn profit on every sale.</p>
-                    <a href="search.html" class="btn btn-secondary btn-lg">Explore Products</a>
-                </div>
-            </div>`;
+        <div class="trust-strip">
+            <div class="trust-item"><span>✅</span><span>Quality Assured</span></div>
+            <div class="trust-item"><span>🚚</span><span>Free Shipping</span></div>
+            <div class="trust-item"><span>💵</span><span>Cash on Delivery</span></div>
+            <div class="trust-item"><span>🔄</span><span>Easy Returns</span></div>
+        </div>`;
 
         // ── Categories ──
         if (categories.length > 0) {
             html += `
-                <div class="mb-3">
-                    <div class="section-header">
-                        <h2>Shop by Category</h2>
-                        <a href="category.html" class="view-all">View All →</a>
-                    </div>
-                    <div class="categories-scroll">
-                        ${categories.map(cat => `
-                            <a href="category.html?id=${cat.id}" class="category-card">
-                                <div class="cat-image">
-                                    <img src="${cat.image_url || placeholderImage(cat.name)}" alt="${cat.name}" loading="lazy">
-                                </div>
-                                <div class="cat-name">${cat.name}</div>
-                            </a>`).join('')}
-                    </div>
-                </div>`;
+            <div class="cat-scroll-wrap">
+                <div class="cat-scroll">
+                    ${categories.map(cat => `
+                    <a href="category.html?id=${cat.id}" class="cat-pill">
+                        <div class="cat-pill-img">
+                            <img src="${cat.image_url || placeholderImage(cat.name)}" alt="${cat.name}" loading="lazy"
+                                 onerror="this.src='${placeholderImage(cat.name)}'">
+                        </div>
+                        <span>${cat.name}</span>
+                    </a>`).join('')}
+                </div>
+            </div>`;
         }
 
         // ── Special Deals ──
         if (special.length > 0) {
-            html += `
-                <div class="special-section mb-3">
-                    <div class="section-header">
-                        <h2>🔥 Special Deals</h2>
-                        <a href="search.html?special=true" class="view-all">View All →</a>
-                    </div>
-                    <div class="products-grid">
-                        ${special.map(p => renderProductCard(p)).join('')}
-                    </div>
-                </div>`;
+            html += renderSection('🔥 Special Deals', special.length, 'search.html?special=true', special);
         }
 
         // ── Featured ──
         if (featured.length > 0) {
-            html += `
-                <div class="mb-3">
-                    <div class="section-header">
-                        <h2>⭐ Featured Products</h2>
-                        <a href="search.html?featured=true" class="view-all">View All →</a>
-                    </div>
-                    <div class="products-grid">
-                        ${featured.map(p => renderProductCard(p)).join('')}
-                    </div>
-                </div>`;
+            html += renderSection('⭐ Featured Products', featured.length, 'search.html?featured=true', featured);
         }
 
         // ── All Products ──
         if (allProducts.length > 0) {
-            html += `
-                <div class="mb-3">
-                    <div class="section-header"><h2>All Products</h2></div>
-                    <div class="products-grid" id="allProductsGrid">
-                        ${allProducts.map(p => renderProductCard(p)).join('')}
-                    </div>
-                    <div class="text-center mt-2">
-                        <a href="search.html" class="btn btn-outline">View All Products</a>
-                    </div>
-                </div>`;
+            html += renderSection('All Products', allProducts.length, 'search.html', allProducts);
         }
 
-        if (!html.includes('product-card')) {
+        if (!special.length && !featured.length && !allProducts.length) {
             html += `
-                <div class="empty-state">
-                    <div style="font-size:48px;margin-bottom:16px;">📦</div>
-                    <h3>No products yet</h3>
-                    <p>Products will appear here once added by admin.</p>
-                </div>`;
+            <div style="padding:60px 20px;text-align:center;color:#999;">
+                <div style="font-size:48px;margin-bottom:12px;">📦</div>
+                <h3 style="color:#333;margin-bottom:6px;">No products yet</h3>
+                <p style="font-size:14px;">Products will appear here once added by admin.</p>
+            </div>`;
         }
 
         container.innerHTML = html;
@@ -462,58 +444,247 @@ async function loadHomePage() {
     } catch (err) {
         console.error('Home page load error:', err);
         container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">😔</div>
-                <h3>Something went wrong</h3>
-                <p>${err.message || 'Failed to load products. Please try again.'}</p>
-                <button class="btn btn-primary" onclick="loadHomePage()">Retry</button>
+            <div style="padding:60px 20px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:12px;">😔</div>
+                <h3 style="color:#333;margin-bottom:8px;">Something went wrong</h3>
+                <p style="color:#999;font-size:14px;margin-bottom:20px;">${err.message || 'Failed to load products'}</p>
+                <button onclick="loadHomePage()" style="background:#6c47ff;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Retry</button>
             </div>`;
     }
 }
 
-// ── PRODUCT CARD ──────────────────────────────────────────────────────────────
-function renderProductCard(product) {
-    const maxMargin = product.mrp - product.base_price;
+function renderSection(title, count, viewAllHref, products) {
     return `
-        <div class="product-card" data-product-id="${product.id}">
-            <a href="product.html?id=${product.slug || product.id}" class="product-image">
-                <img src="${product.thumbnail || (product.images && product.images[0]) || placeholderImage(product.name)}"
-                     alt="${product.name}" loading="lazy">
-                <div class="product-badges">
-                    ${product.is_special  ? '<span class="product-badge special">Special</span>'        : ''}
-                    ${product.is_featured ? '<span class="product-badge featured">Featured</span>'       : ''}
-                    ${product.stock <= 0  ? '<span class="product-badge out-of-stock">Out of Stock</span>' : ''}
-                </div>
-            </a>
-            <button class="like-btn" onclick="handleLike('${product.id}', this)" title="Add to wishlist">♡</button>
-            <div class="product-info">
-                <a href="product.html?id=${product.slug || product.id}">
-                    <div class="product-name">${product.name}</div>
-                </a>
-                <div class="product-price">
-                    <span class="product-mrp">${formatCurrency(product.mrp)}</span>
-                    ${product.base_price < product.mrp ? `<span class="product-base-price">${formatCurrency(product.base_price)}</span>` : ''}
-                </div>
-                <div class="margin-info">
-                    <span>💰 Max margin: ${formatCurrency(maxMargin)}</span>
-                </div>
-                <div class="add-margin-input">
-                    <input type="number" placeholder="Your margin ₹" min="0" max="${maxMargin}"
-                           class="margin-input" data-product-id="${product.id}"
-                           data-max="${maxMargin}" data-mrp="${product.mrp}">
-                </div>
-                <div class="card-actions">
-                    ${product.stock > 0 ? `
-                        <button class="btn btn-primary btn-sm add-cart-btn"
-                                data-product-id="${product.id}"
-                                onclick="handleAddToCart('${product.id}')">🛒 Add</button>
-                    ` : `
-                        <button class="btn btn-ghost btn-sm" disabled>Out of Stock</button>
-                    `}
-                    <a href="product.html?id=${product.slug || product.id}" class="btn btn-outline btn-sm">View</a>
+    <div class="product-section">
+        <div class="section-hdr">
+            <div>
+                <div class="section-title">${title}</div>
+                <div class="section-count">${count}+ Products</div>
+            </div>
+            <a href="${viewAllHref}" class="view-all-btn">View All ›</a>
+        </div>
+        <div class="products-2col">
+            ${products.map(p => renderProductCard(p)).join('')}
+        </div>
+    </div>`;
+}
+
+// ── HOME STYLES (injected once) ───────────────────────────────────────────────
+const HOME_STYLES = `
+/* Trust Strip */
+.trust-strip {
+    display: flex; overflow-x: auto; gap: 0;
+    background: #f5f0ff; padding: 10px 16px;
+    scrollbar-width: none;
+}
+.trust-strip::-webkit-scrollbar { display: none; }
+.trust-item {
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; padding: 4px 16px;
+    font-size: 12px; font-weight: 600; color: #444;
+    border-right: 1px solid #e0d4ff;
+}
+.trust-item:last-child { border-right: none; }
+
+/* Category Scroll */
+.cat-scroll-wrap { overflow: hidden; padding: 16px 0 4px; }
+.cat-scroll {
+    display: flex; gap: 10px; overflow-x: auto;
+    padding: 0 16px 10px; scrollbar-width: none;
+}
+.cat-scroll::-webkit-scrollbar { display: none; }
+.cat-pill {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; min-width: 60px; text-decoration: none;
+    color: #333; font-size: 11px; font-weight: 500;
+    text-align: center; line-height: 1.2;
+}
+.cat-pill-img {
+    width: 52px; height: 52px; border-radius: 50%;
+    overflow: hidden; background: #f0f0f0;
+    border: 2px solid #eee;
+}
+.cat-pill-img img { width: 100%; height: 100%; object-fit: cover; }
+.cat-pill:hover .cat-pill-img { border-color: #6c47ff; }
+
+/* Section */
+.product-section { padding: 16px 0 4px; }
+.section-hdr {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 16px 12px;
+}
+.section-title { font-size: 16px; font-weight: 700; color: #111; }
+.section-count { font-size: 12px; color: #999; margin-top: 2px; }
+.view-all-btn {
+    font-size: 13px; font-weight: 600; color: #6c47ff;
+    text-decoration: none; white-space: nowrap;
+}
+
+/* 2-col product grid */
+.products-2col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; padding: 0 12px;
+}
+
+/* Product Card — Roposo style */
+.rc-card {
+    background: #fff; border-radius: 12px;
+    overflow: hidden; border: 1px solid #eee;
+    box-shadow: 0 1px 6px rgba(0,0,0,.05);
+    position: relative; cursor: pointer;
+    transition: box-shadow .15s;
+}
+.rc-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+
+.rc-img-wrap {
+    position: relative; width: 100%; padding-top: 100%;
+    background: #f8f8f8; overflow: hidden;
+}
+.rc-img-wrap img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; transition: transform .3s;
+}
+.rc-card:hover .rc-img-wrap img { transform: scale(1.04); }
+
+.rc-badges {
+    position: absolute; top: 6px; left: 6px;
+    display: flex; flex-direction: column; gap: 3px;
+}
+.rc-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 7px;
+    border-radius: 4px; text-transform: uppercase; letter-spacing: .04em;
+}
+.rc-badge-special  { background: #ff4d4d; color: #fff; }
+.rc-badge-featured { background: #ffb800; color: #000; }
+.rc-badge-oos      { background: rgba(0,0,0,.6); color: #fff; }
+.rc-badge-new      { background: #6c47ff; color: #fff; }
+
+.rc-like {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(255,255,255,.9); border: none; border-radius: 50%;
+    width: 30px; height: 30px; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.1); transition: transform .15s;
+    z-index: 2;
+}
+.rc-like:hover { transform: scale(1.15); }
+.rc-like.liked { color: #ff4d4d; }
+
+.rc-info { padding: 8px 10px 10px; }
+.rc-name {
+    font-size: 12px; font-weight: 500; color: #222;
+    line-height: 1.4; margin-bottom: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+}
+.rc-price-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+}
+.rc-price {
+    font-size: 15px; font-weight: 800; color: #111;
+}
+.rc-mrp {
+    font-size: 12px; color: #aaa;
+    text-decoration: line-through;
+}
+.rc-discount {
+    font-size: 11px; font-weight: 700; color: #ff4d4d;
+    background: #fff0f0; padding: 1px 5px; border-radius: 4px;
+}
+.rc-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: #888; margin-bottom: 7px;
+}
+.rc-stock { color: #555; }
+.rc-sold  { color: #f59e0b; font-weight: 600; }
+.rc-margin-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+}
+.rc-margin-input {
+    flex: 1; padding: 5px 8px; border: 1.5px solid #eee;
+    border-radius: 7px; font-size: 12px; outline: none;
+    color: #333; background: #fafafa;
+    transition: border-color .15s;
+}
+.rc-margin-input:focus { border-color: #6c47ff; background: #fff; }
+.rc-add-btn {
+    padding: 6px 10px; background: #6c47ff; color: #fff;
+    border: none; border-radius: 7px; font-size: 12px;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+    transition: background .15s;
+}
+.rc-add-btn:hover   { background: #5535d4; }
+.rc-add-btn:disabled { background: #ccc; cursor: not-allowed; }
+.rc-view-btn {
+    display: block; text-align: center; padding: 7px;
+    background: #f5f0ff; color: #6c47ff; border-radius: 8px;
+    font-size: 12px; font-weight: 600; text-decoration: none;
+    margin-top: 4px;
+}
+`;
+
+// ── PRODUCT CARD (Roposo style) ───────────────────────────────────────────────
+function renderProductCard(product) {
+    const maxMargin  = product.mrp - product.base_price;
+    const discount   = product.mrp > 0 ? Math.round((maxMargin / product.mrp) * 100) : 0;
+    const imgSrc     = product.thumbnail
+                    || (product.images && product.images[0])
+                    || placeholderImage(product.name);
+    const isOOS      = product.stock <= 0;
+    const isLowStock = product.stock > 0 && product.stock <= 5;
+
+    return `
+    <div class="rc-card" data-product-id="${product.id}">
+        <a href="product.html?id=${product.slug || product.id}" style="display:block;text-decoration:none;">
+            <div class="rc-img-wrap">
+                <img src="${imgSrc}" alt="${product.name}" loading="lazy"
+                     onerror="this.src='${placeholderImage(product.name)}'">
+                <div class="rc-badges">
+                    ${isOOS               ? '<span class="rc-badge rc-badge-oos">Out of Stock</span>'  : ''}
+                    ${product.is_special  ? '<span class="rc-badge rc-badge-special">Special</span>'  : ''}
+                    ${product.is_featured ? '<span class="rc-badge rc-badge-featured">Featured</span>': ''}
                 </div>
             </div>
-        </div>`;
+        </a>
+        <button class="rc-like" onclick="handleLike('${product.id}',this)" title="Wishlist">♡</button>
+
+        <div class="rc-info">
+            <a href="product.html?id=${product.slug || product.id}" style="text-decoration:none;">
+                <div class="rc-name">${product.name}</div>
+                <div class="rc-price-row">
+                    <span class="rc-price">${formatCurrency(product.base_price)}</span>
+                    ${product.mrp > product.base_price
+                        ? `<span class="rc-mrp">${formatCurrency(product.mrp)}</span>
+                           <span class="rc-discount">${discount}% off</span>`
+                        : ''}
+                </div>
+            </a>
+            <div class="rc-meta">
+                <span class="rc-stock">${
+                    isOOS        ? '❌ Out of stock'
+                    : isLowStock ? `⚠️ Only ${product.stock} left`
+                    :              `📦 ${product.stock} in stock`
+                }</span>
+                ${maxMargin > 0 ? `<span class="rc-sold">💰 Earn ${formatCurrency(maxMargin)}</span>` : ''}
+            </div>
+
+            ${!isOOS ? `
+            <div class="rc-margin-row">
+                <input type="number" class="rc-margin-input margin-input"
+                       placeholder="Add margin ₹" min="0" max="${maxMargin}"
+                       data-product-id="${product.id}" data-max="${maxMargin}" data-mrp="${product.mrp}">
+                <button class="rc-add-btn" onclick="handleAddToCart('${product.id}')">🛒 Add</button>
+            </div>
+            ` : `
+            <button style="width:100%;padding:7px;background:#f5f5f5;border:none;border-radius:8px;
+                           color:#aaa;font-size:12px;font-weight:600;margin-top:4px;" disabled>
+                Out of Stock
+            </button>
+            `}
+
+            <a href="product.html?id=${product.slug || product.id}" class="rc-view-btn">View Details</a>
+        </div>
+    </div>`;
 }
 
 // ── LIKE ──────────────────────────────────────────────────────────────────────
@@ -540,8 +711,8 @@ async function handleAddToCart(productId) {
 // ── ATTACH EVENTS ─────────────────────────────────────────────────────────────
 function attachLikeEvents() {
     if (!Auth.isLoggedIn()) return;
-    document.querySelectorAll('.like-btn').forEach(async btn => {
-        const productId = btn.closest('.product-card')?.dataset.productId;
+    document.querySelectorAll('.rc-like').forEach(async btn => {
+        const productId = btn.closest('.rc-card')?.dataset.productId;
         if (!productId) return;
         const liked = await DB.isLiked(Auth.getUserId(), productId);
         if (liked) { btn.classList.add('liked'); btn.textContent = '❤'; }
