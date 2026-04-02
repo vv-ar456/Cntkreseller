@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        .admin-login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg, #f5f5f5);
+            padding: 20px;
+        }
+        .admin-login-box {
+            background: var(--surface, #fff);
+            border-radius: 16px;
+            padding: 40px 36px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .admin-login-box .logo {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        .admin-login-box h2 {
+            margin: 0 0 6px;
+            font-size: 22px;
+        }
+        .admin-login-box > p {
+            color: var(--text2, #666);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+        /* Inline toast */
+        #loginMsg {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 14px;
+            display: none;
+        }
+        #loginMsg.error   { background: #fce4ec; color: #c62828; display: block; }
+        #loginMsg.success { background: #e8f5e9; color: #2e7d32; display: block; }
+
+        /* Password input with show/hide */
+        .password-wrapper {
+            position: relative;
+        }
+        .password-wrapper input {
+            padding-right: 44px;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text2, #666);
+            padding: 4px;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-login-container">
+    <div class="admin-login-box">
+        <div class="logo">🔒 Conitek</div>
+        <h2>Admin Panel</h2>
+        <p>Enter password to access admin dashboard</p>
+
+        <div class="form-group" style="text-align:left;">
+            <label>Admin Password</label>
+            <div class="password-wrapper">
+                <input type="password" class="form-control" id="adminPassword"
+                       placeholder="Enter admin password"
+                       onkeydown="if(event.key==='Enter') adminLogin()">
+                <button class="password-toggle" type="button"
+                        onclick="togglePasswordVisibility()"
+                        id="toggleBtn" title="Show/Hide password">👁</button>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="adminLogin()" id="adminLoginBtn"
+                style="margin-top:8px; padding:14px; font-size:16px;">
+            Login to Admin
+        </button>
+
+        <!-- Inline message (no external Toast needed) -->
+        <div id="loginMsg"></div>
+
+        <p style="margin-top:20px; font-size:12px; color:var(--text2,#999);">
+            <a href="../conitek/index.html" style="color:var(--primary,#4f46e5);">← Back to Store</a>
+        </p>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script>
+    // ── Redirect if already logged in ────────────────────────────────────
+    if (sessionStorage.getItem('adminAuth') === 'true') {
+        window.location.href = 'dashboard.html';
+    }
+
+    // ── Inline message helper (no Toast dependency) ───────────────────────
+    function showMsg(text, type = 'error') {
+        const el = document.getElementById('loginMsg');
+        el.textContent = text;
+        el.className = type;
+        // Also try Toast if it's available
+        if (typeof Toast !== 'undefined') {
+            type === 'error' ? Toast.error(text) : Toast.success(text);
+        }
+    }
+
+    // ── Toggle password visibility ────────────────────────────────────────
+    function togglePasswordVisibility() {
+        const input = document.getElementById('adminPassword');
+        const btn   = document.getElementById('toggleBtn');
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁';
+        }
+    }
+
+    // ── Main Login Function ───────────────────────────────────────────────
+    async function adminLogin() {
+        const password = document.getElementById('adminPassword').value.trim();
+        const btn      = document.getElementById('adminLoginBtn');
+
+        // Clear previous message
+        document.getElementById('loginMsg').className = '';
+        document.getElementById('loginMsg').textContent = '';
+
+        if (!password) {
+            showMsg('Please enter the admin password');
+            document.getElementById('adminPassword').focus();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner sm"></span> Verifying...';
+
+        try {
+            // ── Timeout wrapper — won't hang forever ──────────────────────
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 8000)
+            );
+
+            const dbPromise = DB.getAdminConfig('admin_password');
+            const { data, error } = await Promise.race([dbPromise, timeoutPromise]);
+
+            // ── RLS / network error ───────────────────────────────────────
+            if (error) {
+                console.error('Admin config error:', error);
+
+                // ── FALLBACK: if Supabase RLS blocks read, compare against
+                //    a locally-hashed value. Set ADMIN_PASSWORD_HASH below.
+                //    Leave empty to disable fallback.
+                const FALLBACK_PASSWORD = ''; // e.g. 'admin123'
+                if (FALLBACK_PASSWORD && password === FALLBACK_PASSWORD) {
+                    sessionStorage.setItem('adminAuth', 'true');
+                    showMsg('Login successful! Redirecting...', 'success');
+                    setTimeout(() => window.location.href = 'dashboard.html', 600);
+                    return;
+                }
+
+                showMsg('⚠️ Could not reach database. Check your Supabase RLS policy for admin_config table.');
+                return;
+            }
+
+            if (!data) {
+                showMsg('⚠️ admin_password key not found in admin_config table.');
+                return;
+            }
+
+            // ── Password comparison ───────────────────────────────────────
+            if (data.value === password) {
+                sessionStorage.setItem('adminAuth', 'true');
+                showMsg('✅ Login successful! Redirecting...', 'success');
+                btn.textContent = '✓ Logged In';
+                setTimeout(() => window.location.href = 'dashboard.html', 500);
+            } else {
+                showMsg('❌ Incorrect password. Please try again.');
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            }
+
+        } catch (e) {
+            if (e.message === 'timeout') {
+                showMsg('⏱️ Request timed out. Supabase RLS may be blocking access. See fix below.');
+                // Show RLS fix hint
+                console.warn(
+                    '🔧 FIX: Go to Supabase → Table Editor → admin_config → RLS Policies\n' +
+                    'Add policy: allow SELECT for anon role WHERE key = \'admin_password\''
+                );
+            } else {
+                showMsg('Something went wrong: ' + e.message);
+                console.error('Login error:', e);
+            }
+        } finally {
+            // ── Always reset button ───────────────────────────────────────
+            if (btn.textContent !== '✓ Logged In') {
+                btn.disabled = false;
+                btn.textContent = 'Login to Admin';
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
