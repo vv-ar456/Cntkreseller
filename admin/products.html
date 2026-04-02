@@ -164,6 +164,37 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-client.js"></script>
 <script>
+// ─── INLINE DB FALLBACK ───────────────────────────────────────────────────────
+// Runs if supabase-client.js failed to load (path issue on GitHub Pages)
+if (typeof DB === 'undefined' || typeof supabase === 'undefined') {
+    const _URL = 'https://ahbtazekfopmjppnlrxc.supabase.co';
+    const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoYnRhemVrZm9wbWpwcG5scnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTYzMzQsImV4cCI6MjA5MDU3MjMzNH0.NrgXule6SJJrwzOk11g99hkC7rQWsd7lS7veqS8QpmA';
+    var supabase = window.supabase.createClient(_URL, _KEY);
+    var DB = {
+        async getAllProducts() {
+            const { data, error } = await supabase.from('products').select('*, categories!products_category_id_fkey(name)').order('created_at', { ascending: false });
+            return { data, error };
+        },
+        async getAllCategories() {
+            const { data, error } = await supabase.from('categories').select('*').order('sort_order');
+            return { data, error };
+        },
+        async createProduct(p) {
+            const { data, error } = await supabase.from('products').insert(p).select().single();
+            return { data, error };
+        },
+        async updateProduct(id, p) {
+            const { data, error } = await supabase.from('products').update(p).eq('id', id).select().single();
+            return { data, error };
+        },
+        async deleteProduct(id) {
+            const { error } = await supabase.from('products').delete().eq('id', id);
+            return { error };
+        }
+    };
+    console.warn('supabase-client.js not loaded — using inline fallback DB');
+}
+
 // ─── AUTH GUARD ──────────────────────────────────────────────────────────────
 if (sessionStorage.getItem('adminAuth') !== 'true') location.href = 'index.html';
 

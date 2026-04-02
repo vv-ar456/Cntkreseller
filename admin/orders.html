@@ -152,6 +152,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-client.js"></script>
 <script>
+// ─── INLINE DB FALLBACK ───────────────────────────────────────────────────────
+if (typeof DB === 'undefined' || typeof supabase === 'undefined') {
+    const _URL = 'https://ahbtazekfopmjppnlrxc.supabase.co';
+    const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoYnRhemVrZm9wbWpwcG5scnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTYzMzQsImV4cCI6MjA5MDU3MjMzNH0.NrgXule6SJJrwzOk11g99hkC7rQWsd7lS7veqS8QpmA';
+    var supabase = window.supabase.createClient(_URL, _KEY);
+    var DB = {
+        async getAllOrders(options = {}) {
+            let query = supabase.from('orders').select('*, order_items(*), profiles(full_name, phone)').order('created_at', { ascending: false });
+            if (options.status) query = query.eq('order_status', options.status);
+            if (options.limit)  query = query.limit(options.limit);
+            const { data, error } = await query;
+            return { data, error };
+        },
+        async updateOrder(id, updates) {
+            const { data, error } = await supabase.from('orders').update(updates).eq('id', id).select().single();
+            return { data, error };
+        }
+    };
+    console.warn('supabase-client.js not loaded — using inline fallback DB');
+}
+
 // ─── AUTH GUARD ──────────────────────────────────────────────────────────────
 if (sessionStorage.getItem('adminAuth') !== 'true') location.href = 'index.html';
 
