@@ -5,244 +5,223 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - Conitek</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/style.css">
     <style>
-        .admin-login-container {
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg, #f5f5f5);
+            background: linear-gradient(135deg, #667eea22, #764ba222), #f0f2f5;
             padding: 20px;
         }
-        .admin-login-box {
-            background: var(--surface, #fff);
-            border-radius: 16px;
-            padding: 40px 36px;
+        .box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 44px 36px;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 40px rgba(79,70,229,0.12);
             text-align: center;
         }
-        .admin-login-box .logo {
-            font-size: 32px;
-            font-weight: 800;
-            margin-bottom: 8px;
-            letter-spacing: -1px;
+        .logo { font-size: 36px; margin-bottom: 8px; }
+        h2 { font-size: 24px; font-weight: 800; margin-bottom: 4px; color: #111; }
+        .sub { color: #888; font-size: 14px; margin-bottom: 32px; }
+        label {
+            display: block; text-align: left;
+            font-size: 13px; font-weight: 600;
+            color: #444; margin-bottom: 6px;
         }
-        .admin-login-box h2 {
-            margin: 0 0 6px;
-            font-size: 22px;
+        .input-wrap { position: relative; margin-bottom: 20px; }
+        input[type=password], input[type=text] {
+            width: 100%;
+            padding: 14px 48px 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            background: #fafafa;
+            color: #111;
         }
-        .admin-login-box > p {
-            color: var(--text2, #666);
-            font-size: 14px;
-            margin-bottom: 28px;
+        input:focus {
+            border-color: #4f46e5;
+            background: #fff;
+            box-shadow: 0 0 0 4px rgba(79,70,229,.08);
         }
-        /* Inline toast */
-        #loginMsg {
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            margin-top: 14px;
-            display: none;
-        }
-        #loginMsg.error   { background: #fce4ec; color: #c62828; display: block; }
-        #loginMsg.success { background: #e8f5e9; color: #2e7d32; display: block; }
-
-        /* Password input with show/hide */
-        .password-wrapper {
-            position: relative;
-        }
-        .password-wrapper input {
-            padding-right: 44px;
-        }
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
+        .eye-btn {
+            position: absolute; right: 14px; top: 50%;
             transform: translateY(-50%);
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--text2, #666);
+            background: none; border: none;
+            font-size: 18px; cursor: pointer; color: #aaa;
             padding: 4px;
-            line-height: 1;
         }
+        .btn {
+            width: 100%; padding: 15px;
+            background: #4f46e5; color: #fff;
+            border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 700;
+            cursor: pointer; font-family: inherit;
+            transition: background .2s, transform .1s;
+            letter-spacing: .01em;
+        }
+        .btn:hover   { background: #4338ca; }
+        .btn:active  { transform: scale(.98); }
+        .btn:disabled { background: #a5b4fc; cursor: not-allowed; transform: none; }
+        .msg {
+            margin-top: 14px; padding: 12px 16px;
+            border-radius: 10px; font-size: 14px;
+            font-weight: 500; display: none;
+            line-height: 1.4;
+        }
+        .msg.err { background: #fef2f2; color: #dc2626; display: block; }
+        .msg.ok  { background: #f0fdf4; color: #16a34a; display: block; }
+        .back { margin-top: 20px; font-size: 13px; color: #aaa; }
+        .back a { color: #4f46e5; text-decoration: none; }
+        .back a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
+<div class="box">
+    <div class="logo">🔒</div>
+    <h2>Conitek Admin</h2>
+    <p class="sub">Enter password to access dashboard</p>
 
-<div class="admin-login-container">
-    <div class="admin-login-box">
-        <div class="logo">🔒 Conitek</div>
-        <h2>Admin Panel</h2>
-        <p>Enter password to access admin dashboard</p>
-
-        <div class="form-group" style="text-align:left;">
-            <label>Admin Password</label>
-            <div class="password-wrapper">
-                <input type="password" class="form-control" id="adminPassword"
-                       placeholder="Enter admin password"
-                       onkeydown="if(event.key==='Enter') adminLogin()">
-                <button class="password-toggle" type="button"
-                        onclick="togglePasswordVisibility()"
-                        id="toggleBtn" title="Show/Hide password">👁</button>
-            </div>
-        </div>
-
-        <button class="btn btn-primary btn-full" onclick="adminLogin()" id="adminLoginBtn"
-                style="margin-top:8px; padding:14px; font-size:16px;">
-            Login to Admin
-        </button>
-
-        <!-- Inline message (no external Toast needed) -->
-        <div id="loginMsg"></div>
-
-        <p style="margin-top:20px; font-size:12px; color:var(--text2,#999);">
-            <a href="../conitek/index.html" style="color:var(--primary,#4f46e5);">← Back to Store</a>
-        </p>
+    <label for="pw">Admin Password</label>
+    <div class="input-wrap">
+        <input type="password" id="pw"
+               placeholder="Enter admin password"
+               onkeydown="if(event.key==='Enter') login()"
+               autofocus>
+        <button class="eye-btn" onclick="toggleEye()" id="eyeBtn" type="button">👁</button>
     </div>
+
+    <button class="btn" id="loginBtn" onclick="login()">Login to Admin</button>
+    <div class="msg" id="msg"></div>
+
+    <p class="back"><a href="../index.html">← Back to Store</a></p>
 </div>
 
+<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../js/supabase-client.js"></script>
+
 <script>
-    // ── Redirect if already logged in ────────────────────────────────────
-    if (sessionStorage.getItem('adminAuth') === 'true') {
-        window.location.href = 'dashboard.html';
+// ── Already logged in? ────────────────────────────────────────────────────
+if (sessionStorage.getItem('adminAuth') === 'true') {
+    location.href = 'dashboard.html';
+}
+
+// ── Supabase credentials (copied from supabase-client.js) ─────────────────
+const _SUPA_URL = 'https://ahbtazekfopmjppnlrxc.supabase.co';
+const _SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoYnRhemVrZm9wbWpwcG5scnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTYzMzQsImV4cCI6MjA5MDU3MjMzNH0.NrgXule6SJJrwzOk11g99hkC7rQWsd7lS7veqS8QpmA';
+
+// Supabase client (this page creates its own — no dependency on supabase-client.js)
+let _sb;
+try {
+    _sb = window.supabase.createClient(_SUPA_URL, _SUPA_KEY);
+} catch(e) {
+    console.error('Supabase init failed:', e);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function show(text, type) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.className   = 'msg ' + type;
+}
+
+function toggleEye() {
+    const pw  = document.getElementById('pw');
+    const btn = document.getElementById('eyeBtn');
+    pw.type         = pw.type === 'password' ? 'text' : 'password';
+    btn.textContent = pw.type === 'password' ? '👁' : '🙈';
+}
+
+function success() {
+    sessionStorage.setItem('adminAuth', 'true');
+    show('✅ Login successful! Redirecting...', 'ok');
+    document.getElementById('loginBtn').textContent = '✓ Done';
+    setTimeout(() => location.href = 'dashboard.html', 500);
+}
+
+async function login() {
+    const pw  = document.getElementById('pw').value.trim();
+    const btn = document.getElementById('loginBtn');
+
+    // Reset message
+    document.getElementById('msg').className = 'msg';
+
+    if (!pw) {
+        show('Please enter the admin password', 'err');
+        document.getElementById('pw').focus();
+        return;
     }
 
-    // ── Inline message helper (no Toast dependency) ───────────────────────
-    function showMsg(text, type = 'error') {
-        const el = document.getElementById('loginMsg');
-        el.textContent = text;
-        el.className = type;
-    }
+    btn.disabled    = true;
+    btn.textContent = '⏳ Verifying...';
 
-    // ── Toggle password visibility ────────────────────────────────────────
-    function togglePasswordVisibility() {
-        const input = document.getElementById('adminPassword');
-        const btn   = document.getElementById('toggleBtn');
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.textContent = '🙈';
-        } else {
-            input.type = 'password';
-            btn.textContent = '👁';
-        }
-    }
+    try {
+        if (!_sb) throw new Error('Supabase client failed to initialize');
 
-    // ── Get supabase client (works whether DB object exists or not) ───────
-    function getSupabaseClient() {
-        // Try DB.supabase first, then window.supabase, then supabase global
-        if (typeof DB !== 'undefined' && DB.supabase) return DB.supabase;
-        if (typeof supabase !== 'undefined' && supabase.from) return supabase;
-        // supabase-js v2 creates window.supabase via createClient
-        if (typeof window._supabase !== 'undefined') return window._supabase;
-        return null;
-    }
+        // Query admin_config with timeout
+        const { data, error } = await Promise.race([
+            _sb.from('admin_config')
+               .select('value')
+               .eq('key', 'admin_password')
+               .single(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 8000)
+            )
+        ]);
 
-    // ── Main Login Function ───────────────────────────────────────────────
-    async function adminLogin() {
-        const password = document.getElementById('adminPassword').value.trim();
-        const btn      = document.getElementById('adminLoginBtn');
-
-        document.getElementById('loginMsg').className = '';
-        document.getElementById('loginMsg').textContent = '';
-
-        if (!password) {
-            showMsg('Please enter the admin password');
-            document.getElementById('adminPassword').focus();
+        if (error) {
+            // RLS is blocking — tell user exact fix
+            console.error('Supabase error:', error);
+            show('⚠️ Database blocked. Add RLS policy (see console for help).', 'err');
+            console.warn(
+                '═══ FIX: Supabase RLS is blocking admin_config read ═══\n' +
+                'Go to: Supabase Dashboard → SQL Editor → Run this:\n\n' +
+                "CREATE POLICY \"anon_read_admin_password\" ON public.admin_config\n" +
+                "FOR SELECT TO anon USING (key = 'admin_password');\n" +
+                '══════════════════════════════════════════════════════'
+            );
             return;
         }
 
-        btn.disabled = true;
-        btn.innerHTML = '⏳ Verifying...';
+        if (!data) {
+            show('⚠️ admin_password row missing in admin_config table.', 'err');
+            return;
+        }
 
-        try {
-            // ── Get supabase client directly — no DB dependency ───────────
-            const sb = getSupabaseClient();
+        if (data.value === pw) {
+            success();
+        } else {
+            show('❌ Incorrect password. Please try again.', 'err');
+            document.getElementById('pw').value = '';
+            document.getElementById('pw').focus();
+        }
 
-            if (!sb) {
-                // supabase-client.js failed to load or wrong path
-                showMsg('❌ Cannot connect to database. Check if supabase-client.js path is correct.');
-                console.error('Supabase client not found. Check script src path in index.html');
-                return;
-            }
-
-            // ── Timeout wrapper ───────────────────────────────────────────
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), 8000)
+    } catch(e) {
+        if (e.message === 'timeout') {
+            show('⏱️ Request timed out — Supabase RLS is likely blocking. Check console.', 'err');
+            console.warn(
+                '═══ FIX: Run this SQL in Supabase Dashboard → SQL Editor ═══\n' +
+                "CREATE POLICY \"anon_read_admin_password\" ON public.admin_config\n" +
+                "FOR SELECT TO anon USING (key = 'admin_password');\n" +
+                '══════════════════════════════════════════════════════════'
             );
-
-            const dbPromise = sb
-                .from('admin_config')
-                .select('value')
-                .eq('key', 'admin_password')
-                .single();
-
-            const { data, error } = await Promise.race([dbPromise, timeoutPromise]);
-
-            // ── RLS / network error ───────────────────────────────────────
-            if (error) {
-                console.error('Admin config error:', error);
-
-                // ── FALLBACK: if Supabase RLS blocks read, compare against
-                //    a locally-hashed value. Set ADMIN_PASSWORD_HASH below.
-                //    Leave empty to disable fallback.
-                const FALLBACK_PASSWORD = ''; // e.g. 'admin123'
-                if (FALLBACK_PASSWORD && password === FALLBACK_PASSWORD) {
-                    sessionStorage.setItem('adminAuth', 'true');
-                    showMsg('Login successful! Redirecting...', 'success');
-                    setTimeout(() => window.location.href = 'dashboard.html', 600);
-                    return;
-                }
-
-                showMsg('⚠️ Could not reach database. Check your Supabase RLS policy for admin_config table.');
-                return;
-            }
-
-            if (!data) {
-                showMsg('⚠️ admin_password key not found in admin_config table.');
-                return;
-            }
-
-            // ── Password comparison ───────────────────────────────────────
-            if (data.value === password) {
-                sessionStorage.setItem('adminAuth', 'true');
-                showMsg('✅ Login successful! Redirecting...', 'success');
-                btn.textContent = '✓ Logged In';
-                setTimeout(() => window.location.href = 'dashboard.html', 500);
-            } else {
-                showMsg('❌ Incorrect password. Please try again.');
-                document.getElementById('adminPassword').value = '';
-                document.getElementById('adminPassword').focus();
-            }
-
-        } catch (e) {
-            if (e.message === 'timeout') {
-                showMsg('⏱️ Request timed out. Supabase RLS may be blocking access. See fix below.');
-                // Show RLS fix hint
-                console.warn(
-                    '🔧 FIX: Go to Supabase → Table Editor → admin_config → RLS Policies\n' +
-                    'Add policy: allow SELECT for anon role WHERE key = \'admin_password\''
-                );
-            } else {
-                showMsg('Something went wrong: ' + e.message);
-                console.error('Login error:', e);
-            }
-        } finally {
-            // ── Always reset button ───────────────────────────────────────
-            if (btn.textContent !== '✓ Logged In') {
-                btn.disabled = false;
-                btn.textContent = 'Login to Admin';
-            }
+        } else {
+            show('Error: ' + e.message, 'err');
+        }
+    } finally {
+        if (document.getElementById('loginBtn').textContent !== '✓ Done') {
+            btn.disabled    = false;
+            btn.textContent = 'Login to Admin';
         }
     }
+}
 </script>
-
 </body>
 </html>
