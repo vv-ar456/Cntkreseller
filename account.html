@@ -1,58 +1,322 @@
+<!-- conitek/account.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account - Conitek</title>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* ── Auth Modal ───────────────────────────── */
+        .auth-modal { max-width: 400px; width: 92%; }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .auth-header .brand-logo {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #6c63ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+            margin-bottom: 6px;
+        }
+        .auth-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 4px;
+        }
+        .auth-header p {
+            color: var(--text2);
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* Phone Input with +91 prefix */
+        .phone-input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--surface);
+            transition: border-color .2s;
+        }
+        .phone-input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 79,70,229), .1);
+        }
+        .phone-prefix {
+            padding: 12px 14px;
+            background: var(--surface2);
+            color: var(--text2);
+            font-size: 15px;
+            font-weight: 600;
+            border-right: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .phone-input-wrapper input {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            flex: 1;
+            padding: 12px 14px;
+            font-size: 16px;
+            background: transparent;
+        }
+
+        /* OTP Boxes */
+        .otp-inputs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0 24px;
+        }
+        .otp-inputs input {
+            width: 46px;
+            height: 52px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color .2s, box-shadow .2s;
+            caret-color: var(--primary);
+        }
+        .otp-inputs input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb,79,70,229),.1);
+            outline: none;
+        }
+        .otp-inputs input.filled {
+            border-color: var(--primary);
+            background: rgba(var(--primary-rgb,79,70,229),.06);
+        }
+
+        /* Resend row */
+        .resend-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text2);
+        }
+        .resend-row button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .resend-row button:disabled {
+            color: var(--text2);
+            cursor: not-allowed;
+        }
+
+        .otp-sent-info {
+            background: var(--surface2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--text2);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .otp-sent-info strong { color: var(--text); }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            color: var(--text2);
+            font-size: 13px;
+            cursor: pointer;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .back-link:hover { color: var(--primary); }
+
+        /* Step indicator */
+        .step-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 24px;
+        }
+        .step-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: background .2s, width .2s;
+        }
+        .step-dot.active {
+            background: var(--primary);
+            width: 24px;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
 
+<!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
 <header class="header">
     <div class="container">
-        <a href="/" class="header-logo">Conitek</a>
-
-        <button id="loginBtn" onclick="Auth.showLoginModal()">Login</button>
-
-        <button id="userMenuTrigger" class="hidden">
-            <span id="userAvatar">U</span>
-            <span id="userName">User</span>
-        </button>
+        <a href="index.html" class="header-logo"><span>Conitek</span></a>
+        <div class="header-actions">
+            <button class="btn btn-primary btn-sm" id="loginBtn" onclick="Auth.showLoginModal()">Login</button>
+            <div style="position:relative;">
+                <button class="user-menu-trigger hidden" id="userMenuTrigger">
+                    <span class="avatar" id="userAvatar">U</span>
+                    <span class="user-name" id="userName">User</span>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <a href="account.html">👤 Account</a>
+                    <a href="orders.html">📦 Orders</a>
+                    <a href="payment.html">💰 Payments</a>
+                    <a href="analytics.html">📊 Analytics</a>
+                    <div class="divider"></div>
+                    <button class="logout-btn" onclick="Auth.signOut()">🚪 Logout</button>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 
-<!-- AUTH MODAL -->
+<!-- ══ ACCOUNT PAGE CONTENT ════════════════════════════════════════════════ -->
+<main class="main-content" id="accountPage">
+    <div class="page-loader"><div class="loading-spinner"></div></div>
+</main>
+
+<!-- ══ BOTTOM NAV ══════════════════════════════════════════════════════════ -->
+<nav class="bottom-nav">
+    <a href="index.html"    class="bottom-nav-item"><span class="nav-icon">🏠</span>Home</a>
+    <a href="category.html" class="bottom-nav-item"><span class="nav-icon">📂</span>Categories</a>
+    <a href="cart.html"     class="bottom-nav-item"><span class="nav-icon">🛒</span>Cart</a>
+    <a href="orders.html"   class="bottom-nav-item"><span class="nav-icon">📦</span>Orders</a>
+    <a href="account.html"  class="bottom-nav-item active"><span class="nav-icon">👤</span>Account</a>
+</nav>
+
+<!-- ══ AUTH MODAL ══════════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="authModal">
-    <div class="modal">
-        <button onclick="Auth.hideLoginModal()">✕</button>
+    <div class="modal auth-modal">
+        <button class="modal-close" onclick="Auth.hideLoginModal()">✕</button>
 
-        <h2>Login</h2>
+        <!-- Step Dots -->
+        <div class="step-dots">
+            <div class="step-dot active" id="dot1"></div>
+            <div class="step-dot"        id="dot2"></div>
+            <div class="step-dot"        id="dot3"></div>
+        </div>
 
-        <!-- PHONE -->
+        <!-- ── STEP 1: Phone Number ── -->
         <div id="phoneStep">
-            <input type="tel" id="authPhone" placeholder="Enter phone">
-            <button id="sendOtpBtn" onclick="Auth.sendLoginOTP()">Send OTP</button>
+            <div class="auth-header">
+                <div class="brand-logo">Conitek</div>
+                <h2>Welcome!</h2>
+                <p>Enter your mobile number to continue</p>
+            </div>
+
+            <div class="form-group">
+                <label>Mobile Number</label>
+                <div class="phone-input-wrapper">
+                    <span class="phone-prefix">🇮🇳 +91</span>
+                    <input type="tel" id="authPhone" maxlength="10" inputmode="numeric"
+                           placeholder="98765 43210"
+                           oninput="this.value=this.value.replace(/\D/g,'')"
+                           onkeypress="if(event.key==='Enter') Auth.sendLoginOTP()">
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-full mt-2" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">
+                Send OTP →
+            </button>
+
+            <p style="text-align:center;font-size:12px;color:var(--text2);margin-top:16px;">
+                By continuing, you agree to our Terms & Privacy Policy
+            </p>
         </div>
 
-        <!-- OTP -->
+        <!-- ── STEP 2: OTP Verification ── -->
         <div id="otpStep" class="hidden">
-            <input maxlength="6" id="otpInput" placeholder="Enter OTP">
-            <button onclick="Auth.verifyLoginOTP()">Verify OTP</button>
+            <button class="back-link" onclick="Auth.goBackToPhone()">← Change number</button>
+
+            <div class="auth-header">
+                <h2>Enter OTP</h2>
+                <p>We sent a 6-digit code to</p>
+            </div>
+
+            <div class="otp-sent-info">
+                📱 <strong id="displayPhone">+91 XXXXXXXXXX</strong>
+            </div>
+
+            <div class="otp-inputs" id="otpBoxes">
+                <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" maxlength="1" inputmode="numeric">
+                <input type="text" maxlength="1" inputmode="numeric">
+                <input type="text" maxlength="1" inputmode="numeric">
+                <input type="text" maxlength="1" inputmode="numeric">
+                <input type="text" maxlength="1" inputmode="numeric">
+            </div>
+
+            <button class="btn btn-primary btn-full" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">
+                Verify OTP ✓
+            </button>
+
+            <div class="resend-row">
+                <span id="resendTimer">Resend in 30s</span>
+                <button id="resendOtpBtn" onclick="Auth.resendOTP()" disabled>Resend OTP</button>
+            </div>
         </div>
 
-        <!-- NAME -->
+        <!-- ── STEP 3: New User — Enter Name ── -->
         <div id="nameStep" class="hidden">
-            <input type="text" id="authName" placeholder="Your name">
-            <button onclick="Auth.completeRegistration()">Done</button>
+            <div class="auth-header">
+                <div style="font-size:40px;margin-bottom:8px;">👋</div>
+                <h2>New Account</h2>
+                <p>What should we call you?</p>
+            </div>
+
+            <div class="form-group">
+                <label>Your Name *</label>
+                <input type="text" class="form-control" id="authName"
+                       placeholder="Enter your full name"
+                       onkeypress="if(event.key==='Enter') Auth.completeRegistration()">
+            </div>
+
+            <div class="form-group" style="margin-top:4px;">
+                <label>Referral Code <small class="text-muted">(optional)</small></label>
+                <input type="text" class="form-control" id="authReferral"
+                       placeholder="Enter referral code" style="text-transform:uppercase;">
+            </div>
+
+            <button class="btn btn-primary btn-full mt-2" id="registerBtn" onclick="Auth.completeRegistration()">
+                Create Account 🎉
+            </button>
         </div>
+
     </div>
 </div>
 
-<!-- SCRIPTS -->
-<script src="js/otp.js"></script>
-<script src="js/auth.js"></script>
+<!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/account.js"></script>
 
 </body>
 </html>
