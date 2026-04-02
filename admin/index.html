@@ -120,10 +120,6 @@
         const el = document.getElementById('loginMsg');
         el.textContent = text;
         el.className = type;
-        // Also try Toast if it's available
-        if (typeof Toast !== 'undefined') {
-            type === 'error' ? Toast.error(text) : Toast.success(text);
-        }
     }
 
     // ── Toggle password visibility ────────────────────────────────────────
@@ -139,12 +135,21 @@
         }
     }
 
+    // ── Get supabase client (works whether DB object exists or not) ───────
+    function getSupabaseClient() {
+        // Try DB.supabase first, then window.supabase, then supabase global
+        if (typeof DB !== 'undefined' && DB.supabase) return DB.supabase;
+        if (typeof supabase !== 'undefined' && supabase.from) return supabase;
+        // supabase-js v2 creates window.supabase via createClient
+        if (typeof window._supabase !== 'undefined') return window._supabase;
+        return null;
+    }
+
     // ── Main Login Function ───────────────────────────────────────────────
     async function adminLogin() {
         const password = document.getElementById('adminPassword').value.trim();
         const btn      = document.getElementById('adminLoginBtn');
 
-        // Clear previous message
         document.getElementById('loginMsg').className = '';
         document.getElementById('loginMsg').textContent = '';
 
@@ -155,15 +160,30 @@
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<span class="loading-spinner sm"></span> Verifying...';
+        btn.innerHTML = '⏳ Verifying...';
 
         try {
-            // ── Timeout wrapper — won't hang forever ──────────────────────
+            // ── Get supabase client directly — no DB dependency ───────────
+            const sb = getSupabaseClient();
+
+            if (!sb) {
+                // supabase-client.js failed to load or wrong path
+                showMsg('❌ Cannot connect to database. Check if supabase-client.js path is correct.');
+                console.error('Supabase client not found. Check script src path in index.html');
+                return;
+            }
+
+            // ── Timeout wrapper ───────────────────────────────────────────
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('timeout')), 8000)
             );
 
-            const dbPromise = DB.getAdminConfig('admin_password');
+            const dbPromise = sb
+                .from('admin_config')
+                .select('value')
+                .eq('key', 'admin_password')
+                .single();
+
             const { data, error } = await Promise.race([dbPromise, timeoutPromise]);
 
             // ── RLS / network error ───────────────────────────────────────
