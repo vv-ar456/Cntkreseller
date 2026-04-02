@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Login - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0d0d0d;
+            --surface: #161616;
+            --surface2: #1f1f1f;
+            --border: #2a2a2a;
+            --accent: #f0b429;
+            --accent2: #e85d04;
+            --text: #f5f5f5;
+            --text2: #888;
+            --radius: 14px;
+        }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Background grid */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(240,180,41,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(240,180,41,.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+        /* Glow orb */
+        body::after {
+            content: '';
+            position: fixed;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(240,180,41,.08) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 44px 40px;
+            width: 100%; max-width: 420px;
+            position: relative;
+            z-index: 1;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 20px; right: 20px; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            border-radius: 1px;
+        }
+
+        .brand {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 32px;
+        }
+        .brand-icon {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .brand-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; }
+        .brand-badge {
+            margin-left: auto;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            letter-spacing: .05em;
+        }
+
+        h1 { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+        .subtitle { color: var(--text2); font-size: 14px; margin-bottom: 32px; }
+
+        label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: var(--text2); text-transform: uppercase;
+            letter-spacing: .08em; margin-bottom: 8px;
+        }
+        .input-wrap { position: relative; margin-bottom: 20px; }
+        input[type=password], input[type=text] {
+            width: 100%;
+            padding: 14px 46px 14px 16px;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(240,180,41,.12);
+        }
+        input::placeholder { color: #444; }
+        .eye {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: var(--text2); cursor: pointer; font-size: 16px;
+            padding: 4px; transition: color .2s;
+        }
+        .eye:hover { color: var(--accent); }
+
+        .btn-login {
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #000; border: none; border-radius: var(--radius);
+            font-family: 'Syne', sans-serif;
+            font-size: 15px; font-weight: 700;
+            cursor: pointer; letter-spacing: .03em;
+            transition: opacity .2s, transform .1s;
+        }
+        .btn-login:hover   { opacity: .92; }
+        .btn-login:active  { transform: scale(.98); }
+        .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+
+        .msg {
+            margin-top: 14px; padding: 12px 16px;
+            border-radius: 10px; font-size: 13px; font-weight: 500;
+            display: none;
+        }
+        .msg.err { background: rgba(239,68,68,.12); color: #f87171; border: 1px solid rgba(239,68,68,.2); display: block; }
+        .msg.ok  { background: rgba(52,211,153,.1);  color: #34d399; border: 1px solid rgba(52,211,153,.2); display: block; }
+
+        .footer-note {
+            margin-top: 24px; text-align: center;
+            font-size: 12px; color: #444;
+        }
+        .footer-note a { color: var(--text2); text-decoration: none; }
+        .footer-note a:hover { color: var(--accent); }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,.3); border-top-color: #000; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="brand">
+        <div class="brand-icon">🏪</div>
+        <span class="brand-text">Conitek</span>
+        <span class="brand-badge">STAFF</span>
+    </div>
+
+    <h1>Staff Login</h1>
+    <p class="subtitle">Access product & category management</p>
+
+    <label for="pw">Staff Password</label>
+    <div class="input-wrap">
+        <input type="password" id="pw" placeholder="Enter staff password"
+               onkeydown="if(event.key==='Enter') login()">
+        <button class="eye" onclick="toggleEye()" id="eyeBtn" type="button">👁</button>
+    </div>
+
+    <button class="btn-login" id="loginBtn" onclick="login()">Login to Staff Panel</button>
+    <div class="msg" id="msg"></div>
+
+    <p class="footer-note"><a href="../index.html">← Back to Store</a></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+    if (sessionStorage.getItem('staffAuth') === 'true') location.href = 'dashboard.html';
+
+    // Staff password stored in admin_config table under key 'staff_password'
+    // Fallback if DB unreachable:
+    const STAFF_FALLBACK_PW = 'staff123'; // change this
+
+    const _URL = 'https://ahbtazekfopmjppnlrxc.supabase.co';
+    const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoYnRhemVrZm9wbWpwcG5scnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTYzMzQsImV4cCI6MjA5MDU3MjMzNH0.NrgXule6SJJrwzOk11g99hkC7rQWsd7lS7veqS8QpmA';
+    let _sb;
+    try { _sb = window.supabase.createClient(_URL, _KEY); } catch(e) {}
+
+    function show(t, type) {
+        const el = document.getElementById('msg');
+        el.textContent = t; el.className = 'msg ' + type;
+    }
+    function toggleEye() {
+        const i = document.getElementById('pw'), b = document.getElementById('eyeBtn');
+        i.type = i.type === 'password' ? 'text' : 'password';
+        b.textContent = i.type === 'password' ? '👁' : '🙈';
+    }
+    function success() {
+        sessionStorage.setItem('staffAuth', 'true');
+        show('✅ Login successful!', 'ok');
+        document.getElementById('loginBtn').textContent = '✓';
+        setTimeout(() => location.href = 'dashboard.html', 500);
+    }
+
+    async function login() {
+        const pw = document.getElementById('pw').value.trim();
+        const btn = document.getElementById('loginBtn');
+        document.getElementById('msg').className = 'msg';
+        if (!pw) { show('Please enter the staff password', 'err'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spin"></span>Verifying...';
+
+        // Fallback first
+        if (STAFF_FALLBACK_PW && pw === STAFF_FALLBACK_PW) { success(); return; }
+
+        try {
+            if (_sb) {
+                const { data } = await Promise.race([
+                    _sb.from('admin_config').select('value').eq('key', 'staff_password').single(),
+                    new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 6000))
+                ]);
+                if (data && data.value === pw) { success(); return; }
+            }
+            show('❌ Incorrect password', 'err');
+            document.getElementById('pw').value = '';
+            document.getElementById('pw').focus();
+        } catch(e) {
+            show('❌ Incorrect password', 'err');
+        } finally {
+            if (document.getElementById('loginBtn').textContent !== '✓') {
+                btn.disabled = false;
+                btn.textContent = 'Login to Staff Panel';
+            }
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Panel - Conitek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #f7f7f5;
+            --surface: #ffffff;
+            --surface2: #f2f2f0;
+            --border: #e5e5e2;
+            --accent: #d97706;
+            --accent-light: #fef3c7;
+            --primary: #1a1a1a;
+            --text: #1a1a1a;
+            --text2: #737373;
+            --text3: #a3a3a3;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --radius: 12px;
+            --sidebar-w: 240px;
+        }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── LAYOUT ── */
+        .layout { display: flex; min-height: 100vh; }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: var(--sidebar-w); background: var(--primary);
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        .sidebar-brand .logo { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: #fff; }
+        .sidebar-brand .badge {
+            display: inline-block; margin-top: 4px;
+            background: var(--accent); color: #000;
+            font-size: 10px; font-weight: 700;
+            padding: 2px 8px; border-radius: 20px;
+            letter-spacing: .06em;
+        }
+        .nav { padding: 16px 12px; flex: 1; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 8px;
+            color: rgba(255,255,255,.5); font-size: 14px; font-weight: 500;
+            cursor: pointer; text-decoration: none;
+            transition: all .15s; border: none; background: none; width: 100%;
+            text-align: left;
+        }
+        .nav-item:hover   { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+        .nav-item.active  { background: rgba(217,119,6,.15); color: var(--accent); }
+        .nav-item .icon   { font-size: 16px; width: 20px; text-align: center; }
+
+        .sidebar-footer {
+            padding: 16px 12px;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+
+        /* ── MAIN ── */
+        .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+        /* ── TOPBAR ── */
+        .topbar {
+            background: var(--surface); border-bottom: 1px solid var(--border);
+            padding: 0 28px; height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .topbar h1 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+        .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+        /* ── CONTENT ── */
+        .content { padding: 28px; }
+
+        /* ── TABS ── */
+        .tabs {
+            display: flex; gap: 4px;
+            background: var(--surface2); padding: 4px; border-radius: 10px;
+            width: fit-content; margin-bottom: 24px;
+        }
+        .tab {
+            padding: 8px 20px; border-radius: 7px; font-size: 14px; font-weight: 600;
+            cursor: pointer; border: none; background: none; color: var(--text2);
+            transition: all .15s;
+        }
+        .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+            cursor: pointer; border: none; font-family: 'DM Sans', sans-serif;
+            transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: #333; }
+        .btn-accent { background: var(--accent); color: #fff; }
+        .btn-accent:hover { background: #b45309; }
+        .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--border); }
+        .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #fee2e2; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; overflow: hidden;
+        }
+        .card-header {
+            padding: 18px 20px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .card-header h2 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+
+        /* ── TABLE ── */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .07em; background: var(--surface2); border-bottom: 1px solid var(--border); }
+        td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: var(--bg); }
+
+        /* ── MODAL ── */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.4);
+            backdrop-filter: blur(4px);
+            z-index: 200; display: none;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .overlay.open { display: flex; }
+        .modal {
+            background: var(--surface); border-radius: 18px;
+            width: 100%; max-width: 600px; max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,.15);
+            animation: slideUp .2s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header {
+            padding: 22px 24px 0;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; background: var(--surface); z-index: 1;
+            padding-bottom: 16px; border-bottom: 1px solid var(--border);
+        }
+        .modal-header h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+        .modal-close {
+            background: var(--surface2); border: none; border-radius: 50%;
+            width: 32px; height: 32px; cursor: pointer; font-size: 16px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text2); transition: all .15s;
+        }
+        .modal-close:hover { background: var(--border); color: var(--text); }
+        .modal-body { padding: 22px 24px; }
+        .modal-footer {
+            padding: 16px 24px 22px;
+            display: flex; gap: 10px; justify-content: flex-end;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── FORM ── */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-grid .full { grid-column: 1 / -1; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .07em; }
+        .form-control {
+            padding: 11px 14px;
+            background: var(--surface2);
+            border: 1.5px solid var(--border);
+            border-radius: 9px; color: var(--text);
+            font-family: 'DM Sans', sans-serif; font-size: 14px;
+            outline: none; transition: border-color .2s;
+            width: 100%;
+        }
+        .form-control:focus { border-color: var(--accent); }
+        textarea.form-control { resize: vertical; }
+        select.form-control { cursor: pointer; }
+        .form-hint { font-size: 11px; color: var(--text3); }
+
+        /* ── IMAGE UPLOAD ── */
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 12px;
+            padding: 28px 20px; text-align: center; cursor: pointer;
+            transition: all .2s; background: var(--surface2);
+            position: relative;
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent); background: var(--accent-light);
+        }
+        .upload-zone input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+        }
+        .upload-zone .upload-icon { font-size: 32px; margin-bottom: 8px; }
+        .upload-zone p { font-size: 13px; color: var(--text2); }
+        .upload-zone strong { color: var(--accent); }
+
+        .image-preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+        .preview-item {
+            position: relative; width: 80px; height: 80px;
+            border-radius: 10px; overflow: hidden;
+            border: 2px solid var(--border);
+        }
+        .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .preview-item .remove-img {
+            position: absolute; top: 3px; right: 3px;
+            background: rgba(0,0,0,.7); color: #fff;
+            border: none; border-radius: 50%; width: 18px; height: 18px;
+            font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .preview-item .thumb-label {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,.6); color: #fff;
+            font-size: 9px; text-align: center; padding: 2px;
+        }
+
+        .upload-progress {
+            background: var(--surface2); border-radius: 8px;
+            padding: 12px 14px; margin-top: 10px; display: none;
+        }
+        .upload-progress.show { display: block; }
+        .progress-bar-wrap { background: var(--border); border-radius: 4px; height: 6px; margin-top: 8px; }
+        .progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+
+        /* ── TOAST ── */
+        #toasts {
+            position: fixed; bottom: 24px; right: 20px; z-index: 999;
+            display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+        }
+        .toast {
+            padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+            max-width: 300px; box-shadow: 0 4px 16px rgba(0,0,0,.1);
+            animation: toastIn .2s ease;
+        }
+        .toast-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .toast-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .toast-info    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        /* ── MISC ── */
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-active { background: #dcfce7; color: #16a34a; }
+        .badge-inactive { background: #f5f5f5; color: #737373; }
+        .badge-parent { background: var(--accent-light); color: var(--accent); }
+
+        .empty { padding: 48px 20px; text-align: center; color: var(--text3); }
+        .empty .icon { font-size: 40px; margin-bottom: 12px; }
+        .empty h3 { font-size: 16px; color: var(--text2); margin-bottom: 4px; }
+
+        .thumb-sm { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--surface2); border: 1px solid var(--border); }
+
+        .margin-hint { font-size: 12px; color: var(--accent); font-weight: 600; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+
+        @media(max-width: 640px) {
+            .sidebar { transform: translateX(-100%); transition: transform .25s; }
+            .sidebar.open { transform: none; }
+            .main { margin-left: 0; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid .full { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="logo">🏪 Conitek</div>
+            <span class="badge">STAFF PANEL</span>
+        </div>
+        <nav class="nav">
+            <a class="nav-item active" id="navProducts" onclick="showTab('products')">
+                <span class="icon">📦</span> Products
+            </a>
+            <a class="nav-item" id="navCategories" onclick="showTab('categories')">
+                <span class="icon">📂</span> Categories
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="nav-item" onclick="logout()">
+                <span class="icon">🚪</span> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── MAIN ── -->
+    <div class="main">
+        <div class="topbar">
+            <h1 id="pageTitle">Products</h1>
+            <div class="topbar-actions">
+                <button class="btn btn-accent" id="addBtn" onclick="openAddModal()">
+                    + Add Product
+                </button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Products Tab -->
+            <div id="productsTab">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>All Products</h2>
+                        <input type="text" class="form-control" style="width:220px;"
+                               placeholder="🔍 Search..." id="productSearch" oninput="filterProducts()">
+                    </div>
+                    <div class="table-wrap">
+                        <div id="productsTable"><div class="empty"><div class="spin"></div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Tab -->
+            <div id="categoriesTab" style="display:none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>All Categories</h2>
+                    </div>
+                    <div class="table-wrap">
+                        <div id="categoriesTable"><div class="empty"><div class="spin"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ PRODUCT MODAL ══ -->
+<div class="overlay" id="productOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="productModalTitle">Add Product</h3>
+            <button class="modal-close" onclick="closeModal('productOverlay')">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="pId">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Product Name *</label>
+                    <input type="text" class="form-control" id="pName" placeholder="Enter product name">
+                </div>
+                <div class="form-group">
+                    <label>MRP (₹) *</label>
+                    <input type="number" class="form-control" id="pMrp" placeholder="0" min="0" oninput="calcMargin()">
+                </div>
+                <div class="form-group">
+                    <label>Base Price (₹) *</label>
+                    <input type="number" class="form-control" id="pBase" placeholder="0" min="0" oninput="calcMargin()">
+                    <span class="form-hint margin-hint" id="marginHint"></span>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select class="form-control" id="pCat" onchange="loadSubCats()">
+                        <option value="">Select category</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Sub Category</label>
+                    <select class="form-control" id="pSubCat">
+                        <option value="">Select sub-category</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Stock *</label>
+                    <input type="number" class="form-control" id="pStock" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Weight (grams)</label>
+                    <input type="number" class="form-control" id="pWeight" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>SKU</label>
+                    <input type="text" class="form-control" id="pSku" placeholder="e.g. CNT-001">
+                </div>
+                <div class="form-group full">
+                    <label>Description</label>
+                    <textarea class="form-control" id="pDesc" rows="3" placeholder="Product description..."></textarea>
+                </div>
+                <div class="form-group full">
+                    <label>Tags <span style="font-weight:400;text-transform:none;letter-spacing:0;">(comma separated)</span></label>
+                    <input type="text" class="form-control" id="pTags" placeholder="electronics, sale, new">
+                </div>
+
+                <!-- ── IMAGE UPLOAD ── -->
+                <div class="form-group full">
+                    <label>Product Images</label>
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" id="imgFiles" accept="image/*" multiple
+                               onchange="handleImageSelect(this.files)">
+                        <div class="upload-icon">📸</div>
+                        <p><strong>Click to upload</strong> or drag & drop</p>
+                        <p style="margin-top:4px;font-size:11px;">JPG, PNG, WEBP up to 5MB each. First image = thumbnail.</p>
+                    </div>
+
+                    <!-- Upload progress -->
+                    <div class="upload-progress" id="uploadProgress">
+                        <div style="font-size:13px;font-weight:600;" id="uploadStatus">Uploading...</div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar" id="progressBar" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="image-preview-grid" id="imgPreview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="pFeatured"> ⭐ Featured
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="pSpecial"> 🔥 Special Deal
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="pActive" checked> ✅ Active
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('productOverlay')">Cancel</button>
+            <button class="btn btn-accent" id="saveProductBtn" onclick="saveProduct()">💾 Save Product</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ CATEGORY MODAL ══ -->
+<div class="overlay" id="catOverlay">
+    <div class="modal" style="max-width:460px;">
+        <div class="modal-header">
+            <h3 id="catModalTitle">Add Category</h3>
+            <button class="modal-close" onclick="closeModal('catOverlay')">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="catId">
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div class="form-group">
+                    <label>Category Name *</label>
+                    <input type="text" class="form-control" id="catName" placeholder="e.g. Electronics">
+                </div>
+                <div class="form-group">
+                    <label>Parent Category <span style="font-weight:400;text-transform:none;letter-spacing:0;">(leave empty for top-level)</span></label>
+                    <select class="form-control" id="catParent">
+                        <option value="">None (Top-level category)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Image URL <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>
+                    <input type="url" class="form-control" id="catImage" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Sort Order</label>
+                    <input type="number" class="form-control" id="catSort" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="catActive" checked> Active (visible in store)
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('catOverlay')">Cancel</button>
+            <button class="btn btn-accent" id="saveCatBtn" onclick="saveCategory()">💾 Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="toasts"></div>
+
+<!-- ══ SCRIPTS ══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+if (sessionStorage.getItem('staffAuth') !== 'true') location.href = 'index.html';
+function logout() { sessionStorage.removeItem('staffAuth'); location.href = 'index.html'; }
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const _URL = 'https://ahbtazekfopmjppnlrxc.supabase.co';
+const _KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFoYnRhemVrZm9wbWpwcG5scnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTYzMzQsImV4cCI6MjA5MDU3MjMzNH0.NrgXule6SJJrwzOk11g99hkC7rQWsd7lS7veqS8QpmA';
+const sb = window.supabase.createClient(_URL, _KEY);
+
+// ── TOAST ──────────────────────────────────────────────────────────────────────
+const T = {
+    show(msg, type='info') {
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.textContent = msg;
+        document.getElementById('toasts').appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    },
+    ok:  m => T.show(m,'success'),
+    err: m => T.show(m,'error'),
+    info:m => T.show(m,'info'),
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const fc = n => '₹' + Number(n||0).toLocaleString('en-IN',{minimumFractionDigits:0});
+const slugify = t => t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+function calcMargin() {
+    const mrp  = parseFloat(document.getElementById('pMrp').value) || 0;
+    const base = parseFloat(document.getElementById('pBase').value) || 0;
+    const hint = document.getElementById('marginHint');
+    if (mrp && base) {
+        const m = mrp - base;
+        hint.textContent = m >= 0
+            ? `Max reseller margin: ${fc(m)} (${((m/mrp)*100).toFixed(1)}%)`
+            : '⚠️ Base price > MRP!';
+        hint.style.color = m >= 0 ? 'var(--accent)' : 'var(--danger)';
+    } else { hint.textContent = ''; }
+}
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let allProducts = [], allCategories = [], uploadedImages = [];
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+    await loadCategories();
+    await loadProducts();
+    setupDragDrop();
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function showTab(tab) {
+    document.getElementById('productsTab').style.display   = tab === 'products'   ? '' : 'none';
+    document.getElementById('categoriesTab').style.display = tab === 'categories' ? '' : 'none';
+    document.getElementById('navProducts').classList.toggle('active',   tab === 'products');
+    document.getElementById('navCategories').classList.toggle('active', tab === 'categories');
+    document.getElementById('pageTitle').textContent = tab === 'products' ? 'Products' : 'Categories';
+    document.getElementById('addBtn').textContent = tab === 'products' ? '+ Add Product' : '+ Add Category';
+    document.getElementById('addBtn').onclick = tab === 'products' ? openAddModal : openAddCatModal;
+    if (tab === 'categories') loadCategoriesTable();
+}
+
+// ── MODAL HELPERS ────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── LOAD CATEGORIES ───────────────────────────────────────────────────────────
+async function loadCategories() {
+    const { data } = await sb.from('categories').select('*').order('sort_order');
+    allCategories = data || [];
+    populateCatSelects();
+}
+
+function populateCatSelects() {
+    const parents = allCategories.filter(c => !c.parent_id);
+
+    // Product form selects
+    const pCat = document.getElementById('pCat');
+    pCat.innerHTML = '<option value="">Select category</option>';
+    parents.forEach(c => pCat.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+
+    // Category form parent select
+    const catParent = document.getElementById('catParent');
+    catParent.innerHTML = '<option value="">None (Top-level)</option>';
+    parents.forEach(c => catParent.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+}
+
+function loadSubCats() {
+    const catId = document.getElementById('pCat').value;
+    const sub = document.getElementById('pSubCat');
+    sub.innerHTML = '<option value="">Select sub-category</option>';
+    allCategories.filter(c => c.parent_id === catId).forEach(c => {
+        sub.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+}
+
+// ── CATEGORIES TABLE ──────────────────────────────────────────────────────────
+async function loadCategoriesTable() {
+    await loadCategories();
+    const el = document.getElementById('categoriesTable');
+    if (!allCategories.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📂</div><h3>No categories</h3></div>';
+        return;
+    }
+    el.innerHTML = `<table>
+        <thead><tr><th>Name</th><th>Type</th><th>Sort</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        ${allCategories.map(c => `
+            <tr>
+                <td><strong>${c.name}</strong></td>
+                <td>${c.parent_id
+                    ? `<span class="badge" style="background:#f5f5f5;color:#737373;">Sub</span>`
+                    : `<span class="badge badge-parent">Parent</span>`}</td>
+                <td>${c.sort_order || 0}</td>
+                <td><span class="badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-ghost btn-sm" onclick='editCategory(${JSON.stringify(c)})'>Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}','${c.name.replace(/'/g,"\\'")}')">Delete</button>
+                    </div>
+                </td>
+            </tr>`).join('')}
+        </tbody></table>`;
+}
+
+// ── ADD/EDIT CATEGORY ────────────────────────────────────────────────────────
+function openAddCatModal() {
+    document.getElementById('catModalTitle').textContent = 'Add Category';
+    document.getElementById('catId').value    = '';
+    document.getElementById('catName').value  = '';
+    document.getElementById('catParent').value = '';
+    document.getElementById('catImage').value = '';
+    document.getElementById('catSort').value  = '0';
+    document.getElementById('catActive').checked = true;
+    openModal('catOverlay');
+    setTimeout(() => document.getElementById('catName').focus(), 100);
+}
+
+function editCategory(cat) {
+    document.getElementById('catModalTitle').textContent = 'Edit Category';
+    document.getElementById('catId').value     = cat.id;
+    document.getElementById('catName').value   = cat.name;
+    document.getElementById('catParent').value = cat.parent_id || '';
+    document.getElementById('catImage').value  = cat.image_url || '';
+    document.getElementById('catSort').value   = cat.sort_order || 0;
+    document.getElementById('catActive').checked = cat.is_active;
+    openModal('catOverlay');
+}
+
+async function saveCategory() {
+    const name = document.getElementById('catName').value.trim();
+    if (!name) { T.err('Category name is required'); return; }
+
+    const btn = document.getElementById('saveCatBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving...';
+
+    const id  = document.getElementById('catId').value;
+    const data = {
+        name,
+        slug:       slugify(name),
+        parent_id:  document.getElementById('catParent').value || null,
+        image_url:  document.getElementById('catImage').value.trim() || null,
+        sort_order: parseInt(document.getElementById('catSort').value) || 0,
+        is_active:  document.getElementById('catActive').checked,
+    };
+
+    try {
+        const { error } = id
+            ? await sb.from('categories').update(data).eq('id', id)
+            : await sb.from('categories').insert(data);
+        if (error) throw error;
+        T.ok(id ? 'Category updated!' : 'Category created!');
+        closeModal('catOverlay');
+        loadCategoriesTable();
+    } catch(e) {
+        T.err('Failed: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Save';
+    }
+}
+
+async function deleteCategory(id, name) {
+    if (!confirm(`Delete "${name}"?`)) return;
+    const { error } = await sb.from('categories').delete().eq('id', id);
+    if (error) { T.err('Failed: ' + error.message); return; }
+    T.ok('Deleted');
+    loadCategoriesTable();
+}
+
+// ── LOAD PRODUCTS ─────────────────────────────────────────────────────────────
+async function loadProducts() {
+    const el = document.getElementById('productsTable');
+    el.innerHTML = '<div class="empty"><div class="spin"></div></div>';
+    const { data, error } = await sb.from('products').select('*, categories!products_category_id_fkey(name)').order('created_at', { ascending: false });
+    if (error) { el.innerHTML = `<div class="empty"><h3>Error: ${error.message}</h3></div>`; return; }
+    allProducts = data || [];
+    renderProductsTable(allProducts);
+}
+
+function filterProducts() {
+    const q = document.getElementById('productSearch').value.toLowerCase();
+    renderProductsTable(q ? allProducts.filter(p => p.name.toLowerCase().includes(q) || (p.sku||'').toLowerCase().includes(q)) : allProducts);
+}
+
+function renderProductsTable(products) {
+    const el = document.getElementById('productsTable');
+    if (!products.length) {
+        el.innerHTML = '<div class="empty"><div class="icon">📦</div><h3>No products yet</h3><p>Click "+ Add Product" to get started</p></div>';
+        return;
+    }
+    el.innerHTML = `<table>
+        <thead><tr><th>Product</th><th>MRP</th><th>Base</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        ${products.map(p => `
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <img class="thumb-sm" src="${p.thumbnail || ''}" onerror="this.style.display='none'" alt="">
+                        <div>
+                            <strong>${p.name}</strong>
+                            <div style="font-size:12px;color:var(--text3);">${p.sku || ''} ${p.is_featured?'⭐':''} ${p.is_special?'🔥':''}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${fc(p.mrp)}</td>
+                <td>${fc(p.base_price)}</td>
+                <td><span style="color:${p.stock===0?'var(--danger)':p.stock<5?'#d97706':'inherit'}">${p.stock}</span></td>
+                <td><span class="badge ${p.is_active?'badge-active':'badge-inactive'}">${p.is_active?'Active':'Inactive'}</span></td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-ghost btn-sm" onclick='editProduct(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}','${p.name.replace(/'/g,"\\'")}')">Delete</button>
+                    </div>
+                </td>
+            </tr>`).join('')}
+        </tbody></table>`;
+}
+
+// ── IMAGE UPLOAD ──────────────────────────────────────────────────────────────
+// uploadedImages = [{url, isNew, file?, localUrl?}, ...]
+
+function setupDragDrop() {
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        handleImageSelect(e.dataTransfer.files);
+    });
+}
+
+function handleImageSelect(files) {
+    const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
+    [...files].forEach(file => {
+        if (!allowed.includes(file.type)) { T.err(`${file.name} — unsupported format`); return; }
+        if (file.size > 5 * 1024 * 1024) { T.err(`${file.name} — max 5MB`); return; }
+        const localUrl = URL.createObjectURL(file);
+        uploadedImages.push({ url: null, localUrl, file, isNew: true });
+    });
+    renderImagePreview();
+    // reset file input
+    document.getElementById('imgFiles').value = '';
+}
+
+function renderImagePreview() {
+    const grid = document.getElementById('imgPreview');
+    if (!uploadedImages.length) { grid.innerHTML = ''; return; }
+    grid.innerHTML = uploadedImages.map((img, i) => `
+        <div class="preview-item">
+            <img src="${img.localUrl || img.url}" alt="">
+            <button class="remove-img" onclick="removeImage(${i})">✕</button>
+            ${i === 0 ? '<div class="thumb-label">THUMB</div>' : ''}
+        </div>`).join('');
+}
+
+function removeImage(idx) {
+    if (uploadedImages[idx].localUrl) URL.revokeObjectURL(uploadedImages[idx].localUrl);
+    uploadedImages.splice(idx, 1);
+    renderImagePreview();
+}
+
+async function uploadAllImages() {
+    const toUpload = uploadedImages.filter(img => img.isNew && img.file);
+    if (!toUpload.length) return;
+
+    const progress = document.getElementById('uploadProgress');
+    const bar      = document.getElementById('progressBar');
+    const status   = document.getElementById('uploadStatus');
+    progress.classList.add('show');
+
+    for (let i = 0; i < toUpload.length; i++) {
+        const img = toUpload[i];
+        status.textContent = `Uploading ${i+1}/${toUpload.length}: ${img.file.name}`;
+        bar.style.width = `${Math.round((i / toUpload.length) * 100)}%`;
+
+        const ext  = img.file.name.split('.').pop();
+        const path = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+        const { data, error } = await sb.storage.from('products').upload(path, img.file, { upsert: false });
+        if (error) {
+            T.err(`Upload failed: ${error.message}`);
+            continue;
+        }
+        const { data: urlData } = sb.storage.from('products').getPublicUrl(path);
+        img.url   = urlData.publicUrl;
+        img.isNew = false;
+    }
+
+    bar.style.width = '100%';
+    status.textContent = '✅ Upload complete';
+    setTimeout(() => progress.classList.remove('show'), 1500);
+}
+
+// ── ADD / EDIT PRODUCT ────────────────────────────────────────────────────────
+function openAddModal() {
+    document.getElementById('productModalTitle').textContent = 'Add Product';
+    document.getElementById('pId').value = '';
+    document.getElementById('pName').value    = '';
+    document.getElementById('pMrp').value     = '';
+    document.getElementById('pBase').value    = '';
+    document.getElementById('pCat').value     = '';
+    document.getElementById('pSubCat').innerHTML = '<option value="">Select sub-category</option>';
+    document.getElementById('pStock').value   = '0';
+    document.getElementById('pWeight').value  = '0';
+    document.getElementById('pSku').value     = '';
+    document.getElementById('pDesc').value    = '';
+    document.getElementById('pTags').value    = '';
+    document.getElementById('pFeatured').checked = false;
+    document.getElementById('pSpecial').checked  = false;
+    document.getElementById('pActive').checked   = true;
+    document.getElementById('marginHint').textContent = '';
+    uploadedImages = [];
+    renderImagePreview();
+    openModal('productOverlay');
+    setTimeout(() => document.getElementById('pName').focus(), 100);
+}
+
+function editProduct(p) {
+    document.getElementById('productModalTitle').textContent = 'Edit Product';
+    document.getElementById('pId').value          = p.id;
+    document.getElementById('pName').value        = p.name;
+    document.getElementById('pMrp').value         = p.mrp;
+    document.getElementById('pBase').value        = p.base_price;
+    document.getElementById('pCat').value         = p.category_id || '';
+    document.getElementById('pStock').value       = p.stock;
+    document.getElementById('pWeight').value      = p.weight_grams || 0;
+    document.getElementById('pSku').value         = p.sku || '';
+    document.getElementById('pDesc').value        = p.description || '';
+    document.getElementById('pTags').value        = (p.tags || []).join(', ');
+    document.getElementById('pFeatured').checked  = p.is_featured;
+    document.getElementById('pSpecial').checked   = p.is_special;
+    document.getElementById('pActive').checked    = p.is_active;
+
+    // Existing images
+    const allImgs = [p.thumbnail, ...(p.images || [])].filter(Boolean);
+    uploadedImages = allImgs.map(url => ({ url, localUrl: url, isNew: false }));
+    renderImagePreview();
+
+    loadSubCats();
+    setTimeout(() => document.getElementById('pSubCat').value = p.subcategory_id || '', 100);
+    calcMargin();
+    openModal('productOverlay');
+}
+
+async function saveProduct() {
+    const name = document.getElementById('pName').value.trim();
+    const mrp  = parseFloat(document.getElementById('pMrp').value);
+    const base = parseFloat(document.getElementById('pBase').value);
+
+    if (!name) { T.err('Product name required'); return; }
+    if (!mrp)  { T.err('MRP required'); return; }
+    if (!base && base !== 0) { T.err('Base price required'); return; }
+    if (base > mrp) { T.err('Base price cannot exceed MRP'); return; }
+
+    const btn = document.getElementById('saveProductBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving...';
+
+    try {
+        // Upload any new images first
+        await uploadAllImages();
+
+        const imageUrls   = uploadedImages.filter(i => i.url).map(i => i.url);
+        const thumbnail   = imageUrls[0] || null;
+        const extraImages = imageUrls.slice(1);
+
+        const id = document.getElementById('pId').value;
+        const productData = {
+            name,
+            mrp,
+            base_price:    base,
+            category_id:   document.getElementById('pCat').value     || null,
+            subcategory_id:document.getElementById('pSubCat').value  || null,
+            stock:         parseInt(document.getElementById('pStock').value)  || 0,
+            weight_grams:  parseInt(document.getElementById('pWeight').value) || 0,
+            sku:           document.getElementById('pSku').value.trim()  || null,
+            description:   document.getElementById('pDesc').value.trim() || null,
+            tags:          document.getElementById('pTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+            is_featured:   document.getElementById('pFeatured').checked,
+            is_special:    document.getElementById('pSpecial').checked,
+            is_active:     document.getElementById('pActive').checked,
+            thumbnail,
+            images: extraImages,
+        };
+
+        if (!id) productData.slug = slugify(name) + '-' + Date.now().toString(36);
+
+        const { error } = id
+            ? await sb.from('products').update(productData).eq('id', id)
+            : await sb.from('products').insert(productData);
+
+        if (error) throw error;
+
+        T.ok(id ? 'Product updated! ✅' : 'Product created! 🎉');
+        closeModal('productOverlay');
+        await loadProducts();
+    } catch(e) {
+        T.err('Failed: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Save Product';
+    }
+}
+
+async function deleteProduct(id, name) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const { error } = await sb.from('products').delete().eq('id', id);
+    if (error) { T.err('Delete failed: ' + error.message); return; }
+    T.ok('Product deleted');
+    loadProducts();
+}
+</script>
+</body>
+</html>
