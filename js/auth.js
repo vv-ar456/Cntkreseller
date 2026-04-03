@@ -1,36 +1,16 @@
-// js/auth.js
-// Conitek — Phone OTP Authentication via 2Factor.in + Supabase
-// ─────────────────────────────────────────────────────────────────────────────
-// HOW IT WORKS:
-//   1. User enters phone → OTP sent via 2Factor.in
-//   2. User enters OTP  → verified via 2Factor.in
-//   3. We derive a STABLE password from phone: conitek_<phone>_v1
-//      (same phone = same password always → existing users can always sign in)
-//   4. Try signInWithPassword → if user not found → signUp → show name step
-//   5. On new user: save name + phone in profiles table
-// ─────────────────────────────────────────────────────────────────────────────
+// js/auth.js — Conitek OTP Auth + KYC flow
 
 const Auth = {
     currentUser:    null,
     currentProfile: null,
     otpSessionId:   null,
-    phoneNumber:    null,   // stored as "919876543210"
+    phoneNumber:    null,
     resendTimer:    null,
 
-    // ── Stable password — derived only from phone, never changes ──────────
-    _makePassword(phone10digit) {
-        // phone10digit = 10-digit number e.g. "9876543210"
-        return `conitek_${phone10digit}_v1`;
-    },
+    _pwd(p)   { return `conitek_${p}_v1`; },
+    _email(p) { return `${p}@conitek.user`; },
 
-    // ── Supabase email alias (Supabase needs email, we fake it from phone) ─
-    _makeEmail(phone10digit) {
-        return `${phone10digit}@conitek.user`;
-    },
-
-    // ─────────────────────────────────────────────────────────────────────
-    // INIT — call this on every page load
-    // ─────────────────────────────────────────────────────────────────────
+    // ── INIT ─────────────────────────────────────────────────────
     async init() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -38,24 +18,20 @@ const Auth = {
                 this.currentUser = session.user;
                 await this.loadProfile();
             }
-
             supabase.auth.onAuthStateChange(async (event, session) => {
                 if (event === 'SIGNED_IN' && session) {
                     this.currentUser = session.user;
                     await this.loadProfile();
                     this.updateUI();
                 } else if (event === 'SIGNED_OUT') {
-                    this.currentUser    = null;
+                    this.currentUser = null;
                     this.currentProfile = null;
                     this.updateUI();
                 }
             });
-        } catch(e) {
-            console.error('Auth init error:', e);
-        }
-
+        } catch(e) { console.error('Auth init:', e); }
         this.updateUI();
-        setupOTPInputs();
+        this._setupOTPInputs();
     },
 
     async loadProfile() {
@@ -63,334 +39,266 @@ const Auth = {
         try {
             const { data } = await DB.getProfile(this.currentUser.id);
             this.currentProfile = data;
-        } catch(e) {
-            console.error('Profile load error:', e);
-        }
+        } catch(e) {}
     },
 
     isLoggedIn()  { return !!this.currentUser; },
     getUserId()   { return this.currentUser?.id; },
-
     requireAuth() {
         if (!this.isLoggedIn()) { this.showLoginModal(); return false; }
         return true;
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // MODAL CONTROLS
-    // ─────────────────────────────────────────────────────────────────────
+    // ── MODAL ────────────────────────────────────────────────────
     showLoginModal() {
         const modal = document.getElementById('authModal');
         if (!modal) return;
         modal.classList.add('active');
         this._goToStep(1);
-        setTimeout(() => document.getElementById('authPhone')?.focus(), 100);
+        setTimeout(() => document.getElementById('authPhone')?.focus(), 150);
     },
-
     hideLoginModal() {
         document.getElementById('authModal')?.classList.remove('active');
         this._goToStep(1);
     },
-
     goBackToPhone() {
         this._goToStep(1);
-        document.getElementById('authPhone')?.focus();
+        setTimeout(() => document.getElementById('authPhone')?.focus(), 100);
     },
 
-    // step = 1 (phone), 2 (otp), 3 (name)
     _goToStep(step) {
-        document.getElementById('phoneStep')?.classList.toggle('hidden', step !== 1);
-        document.getElementById('otpStep')  ?.classList.toggle('hidden', step !== 2);
-        document.getElementById('nameStep') ?.classList.toggle('hidden', step !== 3);
-
-        // Update step dots
+        const ids = ['phoneStep','otpStep','nameStep'];
+        ids.forEach((id, i) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (i + 1 === step) ? '' : 'none';
+        });
         for (let i = 1; i <= 3; i++) {
-            document.getElementById('dot' + i)?.classList.toggle('active', i <= step);
+            const dot = document.getElementById('dot' + i);
+            if (!dot) continue;
+            dot.style.background = i <= step ? '#6c47ff' : '#e5e7eb';
+            dot.style.width = i === step ? '20px' : '6px';
         }
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // STEP 1 — Send OTP
-    // ─────────────────────────────────────────────────────────────────────
+    // ── SEND OTP ─────────────────────────────────────────────────
     async sendLoginOTP() {
-        const rawPhone = (document.getElementById('authPhone')?.value || '').replace(/\D/g, '').trim();
-
-        if (rawPhone.length !== 10) {
-            Toast.error('Please enter a valid 10-digit mobile number');
-            document.getElementById('authPhone')?.focus();
-            return;
+        const raw = (document.getElementById('authPhone')?.value || '').replace(/\D/g,'').trim();
+        if (raw.length !== 10) {
+            this._toast('Enter a valid 10-digit number', 'error'); return;
         }
-
-        const fullPhone    = '91' + rawPhone;   // "919876543210"
-        this.phoneNumber   = fullPhone;
-
-        const sendBtn = document.getElementById('sendOtpBtn');
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<span class="loading-spinner sm"></span> Sending OTP...';
+        this.phoneNumber = '91' + raw;
+        const btn = document.getElementById('sendOtpBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="mini-spin"></span> Sending...';
 
         try {
-            const { sessionId, error } = await OTP.sendOTP(fullPhone);
-
-            if (error) {
-                Toast.error('OTP send failed: ' + error);
-                return;
-            }
+            const { sessionId, error } = await OTP.sendOTP(this.phoneNumber);
+            if (error) throw new Error(error);
 
             this.otpSessionId = sessionId;
+            const fmt = raw.replace(/(\d{5})(\d{5})/,'$1 $2');
+            const dp  = document.getElementById('displayPhone');
+            if (dp) dp.textContent = '+91 ' + fmt;
 
-            // Show phone number in OTP step
-            const formatted = rawPhone.replace(/(\d{5})(\d{5})/, '$1 $2');
-            const el = document.getElementById('displayPhone');
-            if (el) el.textContent = '+91 ' + formatted;
-
-            // Clear previous OTP inputs
-            document.querySelectorAll('#otpBoxes input').forEach(i => {
-                i.value = '';
-                i.classList.remove('filled');
+            // Reset OTP boxes
+            document.querySelectorAll('#otpBoxes .otp-box').forEach(b => {
+                b.value = '';
+                b.style.borderColor = '#e5e7eb';
+                b.style.background  = '#fafafa';
             });
 
             this._goToStep(2);
-            setTimeout(() => document.querySelector('#otpBoxes input')?.focus(), 100);
-
-            Toast.success('OTP sent to +91 ' + formatted);
+            setTimeout(() => document.querySelector('#otpBoxes .otp-box')?.focus(), 100);
+            this._toast('OTP sent! 📱', 'success');
             this.startResendTimer();
-
         } catch(e) {
-            Toast.error('Something went wrong. Please try again.');
+            this._toast('OTP send failed: ' + e.message, 'error');
         } finally {
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Send OTP →';
+            btn.disabled = false;
+            btn.textContent = 'Send OTP →';
         }
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // STEP 2 — Verify OTP
-    // ─────────────────────────────────────────────────────────────────────
+    // ── VERIFY OTP ───────────────────────────────────────────────
     async verifyLoginOTP() {
-        const inputs = document.querySelectorAll('#otpBoxes input');
-        const otp    = [...inputs].map(i => i.value).join('');
+        const boxes = document.querySelectorAll('#otpBoxes .otp-box');
+        const otp   = [...boxes].map(b => b.value).join('');
 
         if (otp.length !== 6) {
-            Toast.error('Please enter the complete 6-digit OTP');
+            // Don't show error if still typing
+            if (otp.length > 0) this._toast('Enter all 6 digits', 'error');
             return;
         }
 
-        const verifyBtn = document.getElementById('verifyOtpBtn');
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = '<span class="loading-spinner sm"></span> Verifying...';
+        const btn = document.getElementById('verifyOtpBtn');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="mini-spin"></span> Verifying...'; }
 
         try {
             const { verified, error } = await OTP.verifyOTP(this.otpSessionId, otp);
 
             if (!verified) {
-                Toast.error(error || 'Incorrect OTP. Please try again.');
-                // Shake effect
-                document.getElementById('otpBoxes')?.classList.add('shake');
-                setTimeout(() => document.getElementById('otpBoxes')?.classList.remove('shake'), 600);
-                inputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
-                inputs[0]?.focus();
+                this._toast(error || 'Incorrect OTP. Try again.', 'error');
+                boxes.forEach(b => {
+                    b.style.borderColor = '#ef4444';
+                    b.value = '';
+                    b.style.background = '#fafafa';
+                });
+                document.querySelector('#otpBoxes .otp-box')?.focus();
+                if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
                 return;
             }
 
-            // ── OTP verified → authenticate with Supabase ──────────────
             await this._authenticateUser();
 
         } catch(e) {
-            Toast.error('Verification failed. Please try again.');
-            console.error('OTP verify error:', e);
-        } finally {
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Verify OTP ✓';
+            this._toast('Error: ' + e.message, 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
         }
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // SUPABASE AUTH — sign in or sign up
-    // ─────────────────────────────────────────────────────────────────────
+    // ── SUPABASE AUTH ────────────────────────────────────────────
     async _authenticateUser() {
-        const phone10 = this.phoneNumber.replace(/^91/, '');   // "9876543210"
-        const email    = this._makeEmail(phone10);
-        const password = this._makePassword(phone10);
+        const phone10  = this.phoneNumber.replace(/^91/,'');
+        const email    = this._email(phone10);
+        const password = this._pwd(phone10);
 
-        // 1. Try sign in first (existing user)
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email, password
-        });
-
-        if (!signInError && signInData?.user) {
-            // ✅ Existing user signed in
-            Toast.success('Welcome back! 👋');
+        // Try sign in existing user
+        const { data: si, error: siErr } = await supabase.auth.signInWithPassword({ email, password });
+        if (!siErr && si?.user) {
+            this._toast('Welcome back! 👋', 'success');
             this.hideLoginModal();
+            await this.loadProfile();
+            this._checkKycOnLogin();
             return;
         }
 
-        // 2. User not found → create new account
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { phone: phone10, full_name: '' }
-            }
+        // New user signup
+        const { data: su, error: suErr } = await supabase.auth.signUp({
+            email, password,
+            options: { data: { phone: phone10, full_name: '' } }
         });
 
-        if (signUpError) {
-            // Edge case: account exists but password was different (old version)
-            // Attempt with legacy password formats
-            const legacyPasswords = [
-                `conitek_${phone10}_default`,
-                `conitek_${phone10}_secure`,
-            ];
-
-            for (const legacyPwd of legacyPasswords) {
-                const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-                    email, password: legacyPwd
-                });
-                if (!retryError && retryData?.user) {
-                    // Found with legacy password → update to new stable password
+        if (suErr) {
+            // Legacy password fallback
+            for (const lp of [`conitek_${phone10}_default`,`conitek_${phone10}_secure`]) {
+                const { data: rd } = await supabase.auth.signInWithPassword({ email, password: lp });
+                if (rd?.user) {
                     await supabase.auth.updateUser({ password });
-                    Toast.success('Welcome back! 👋');
+                    this._toast('Welcome back! 👋', 'success');
                     this.hideLoginModal();
                     return;
                 }
             }
-
-            Toast.error('Login failed. Please try again.');
-            console.error('Auth error:', signUpError);
+            this._toast('Auth failed. Please try again.', 'error');
+            const btn = document.getElementById('verifyOtpBtn');
+            if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
             return;
         }
 
-        // 3. New user signed up → show name step
+        // New user → show name step
         this._goToStep(3);
+        const btn = document.getElementById('verifyOtpBtn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
         setTimeout(() => document.getElementById('authName')?.focus(), 100);
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // STEP 3 — Complete Registration (new users only)
-    // ─────────────────────────────────────────────────────────────────────
+    // ── NAME STEP → KYC ──────────────────────────────────────────
     async completeRegistration() {
-        const name     = document.getElementById('authName')?.value?.trim();
-        const referral = document.getElementById('authReferral')?.value?.trim().toUpperCase() || null;
-
+        const name = document.getElementById('authName')?.value?.trim();
         if (!name || name.length < 2) {
-            Toast.error('Please enter your name (at least 2 characters)');
-            document.getElementById('authName')?.focus();
-            return;
+            this._toast('Please enter your name (min 2 chars)', 'error'); return;
         }
-
-        const regBtn = document.getElementById('registerBtn');
-        regBtn.disabled = true;
-        regBtn.innerHTML = '<span class="loading-spinner sm"></span> Creating account...';
+        const btn = document.getElementById('registerBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="mini-spin"></span> Saving...';
 
         try {
-            // Wait for auth state to settle if needed
-            let uid = this.currentUser?.id;
-            if (!uid) {
-                await new Promise(r => setTimeout(r, 800));
-                uid = this.currentUser?.id;
-            }
-
+            await new Promise(r => setTimeout(r, 700));
+            const uid = this.currentUser?.id;
             if (uid) {
-                const phone10 = this.phoneNumber?.replace(/^91/, '') || '';
                 await DB.updateProfile(uid, {
-                    full_name:    name,
-                    phone:        phone10,
-                    referral_code: referral
+                    full_name:  name,
+                    phone:      this.phoneNumber?.replace(/^91/,'') || '',
+                    kyc_status: 'not_submitted',
                 });
                 await this.loadProfile();
             }
-
-            Toast.success(`Welcome to Conitek, ${name}! 🎉`);
             this.hideLoginModal();
             this.updateUI();
+            this._toast('Welcome, ' + name + '! 👋', 'success');
 
-            // Reload account page if we're on it
-            if (typeof loadAccountPage === 'function') loadAccountPage();
-
+            // Open KYC modal after short delay
+            setTimeout(() => {
+                if (typeof showKycModal === 'function') showKycModal();
+            }, 700);
         } catch(e) {
-            Toast.error('Could not save profile. Please try again.');
-            console.error('Registration error:', e);
+            this._toast('Error: ' + e.message, 'error');
         } finally {
-            regBtn.disabled = false;
-            regBtn.textContent = 'Create Account 🎉';
+            btn.disabled = false;
+            btn.textContent = 'Continue to KYC →';
         }
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // RESEND OTP
-    // ─────────────────────────────────────────────────────────────────────
+    _checkKycOnLogin() {
+        const st = this.currentProfile?.kyc_status;
+        if (!st || st === 'not_submitted') {
+            setTimeout(() => {
+                if (typeof showKycModal === 'function') showKycModal();
+            }, 800);
+        }
+    },
+
+    // ── RESEND ───────────────────────────────────────────────────
     async resendOTP() {
         if (!this.phoneNumber) return;
-
-        const resendBtn  = document.getElementById('resendOtpBtn');
-        resendBtn.disabled = true;
-        resendBtn.textContent = 'Sending...';
-
+        const btn = document.getElementById('resendOtpBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
         try {
             const { sessionId, error } = await OTP.sendOTP(this.phoneNumber);
-            if (error) { Toast.error('Resend failed: ' + error); return; }
-
+            if (error) throw new Error(error);
             this.otpSessionId = sessionId;
-            Toast.success('OTP resent!');
+            this._toast('OTP resent!', 'success');
             this.startResendTimer();
-
-            // Clear inputs
-            document.querySelectorAll('#otpBoxes input').forEach(i => {
-                i.value = '';
-                i.classList.remove('filled');
+            document.querySelectorAll('#otpBoxes .otp-box').forEach(b => {
+                b.value = ''; b.style.borderColor = '#e5e7eb'; b.style.background = '#fafafa';
             });
-            document.querySelector('#otpBoxes input')?.focus();
-
+            document.querySelector('#otpBoxes .otp-box')?.focus();
         } catch(e) {
-            Toast.error('Resend failed. Please try again.');
+            this._toast('Resend failed', 'error');
         } finally {
-            resendBtn.textContent = 'Resend OTP';
+            if (btn) btn.textContent = 'Resend OTP';
         }
     },
 
-    startResendTimer(seconds = 30) {
-        const resendBtn  = document.getElementById('resendOtpBtn');
-        const timerSpan  = document.getElementById('resendTimer');
-
-        if (resendBtn)  resendBtn.disabled = true;
+    startResendTimer(s = 30) {
+        const btn  = document.getElementById('resendOtpBtn');
+        const span = document.getElementById('resendTimer');
+        if (btn) btn.disabled = true;
         if (this.resendTimer) clearInterval(this.resendTimer);
-
-        let s = seconds;
+        let sec = s;
         const tick = () => {
-            if (timerSpan) timerSpan.textContent = `Resend in ${s}s`;
-            if (--s < 0) {
-                clearInterval(this.resendTimer);
-                if (resendBtn) resendBtn.disabled = false;
-                if (timerSpan) timerSpan.textContent = '';
-            }
+            if (span) span.textContent = sec > 0 ? `Resend in ${sec}s` : '';
+            if (--sec < 0) { clearInterval(this.resendTimer); if (btn) btn.disabled = false; }
         };
         tick();
         this.resendTimer = setInterval(tick, 1000);
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // SIGN OUT
-    // ─────────────────────────────────────────────────────────────────────
+    // ── SIGN OUT ──────────────────────────────────────────────────
     async signOut() {
-        try {
-            await supabase.auth.signOut();
-        } catch(e) {
-            console.error('Sign out error:', e);
-        }
-        this.currentUser    = null;
-        this.currentProfile = null;
+        try { await supabase.auth.signOut(); } catch(e) {}
+        this.currentUser = null; this.currentProfile = null;
         this.updateUI();
-        Toast.info('Signed out. See you soon! 👋');
-        setTimeout(() => window.location.href = 'index.html', 800);
+        this._toast('Signed out 👋', 'info');
+        setTimeout(() => location.href = 'index.html', 600);
     },
 
-    // ─────────────────────────────────────────────────────────────────────
-    // UPDATE UI — header login/user display
-    // ─────────────────────────────────────────────────────────────────────
+    // ── UPDATE UI ─────────────────────────────────────────────────
     updateUI() {
-        const loginBtn  = document.getElementById('loginBtn');
-        const userMenu  = document.getElementById('userMenuTrigger');
+        const loginBtn   = document.getElementById('loginBtn');
+        const userMenu   = document.getElementById('userMenuTrigger');
         const userAvatar = document.getElementById('userAvatar');
-        const userName  = document.getElementById('userName');
+        const userName   = document.getElementById('userName');
 
         if (this.isLoggedIn()) {
             loginBtn?.classList.add('hidden');
@@ -403,15 +311,11 @@ const Auth = {
             userMenu?.classList.add('hidden');
         }
 
-        // User menu dropdown toggle
-        const trigger = document.getElementById('userMenuTrigger');
+        const trigger  = document.getElementById('userMenuTrigger');
         const dropdown = document.getElementById('userDropdown');
-        if (trigger && dropdown && !trigger._bound) {
-            trigger._bound = true;
-            trigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdown.classList.toggle('active');
-            });
+        if (trigger && dropdown && !trigger._dd) {
+            trigger._dd = true;
+            trigger.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.toggle('active'); });
             document.addEventListener('click', () => dropdown.classList.remove('active'));
         }
 
@@ -424,8 +328,7 @@ const Auth = {
         try {
             const { count } = await DB.getCartCount(this.getUserId());
             document.querySelectorAll('.cart-badge').forEach(b => {
-                b.textContent = count;
-                b.classList.toggle('hidden', !count);
+                b.textContent = count; b.classList.toggle('hidden', !count);
             });
         } catch(e) {}
     },
@@ -435,72 +338,81 @@ const Auth = {
         try {
             const { count } = await DB.getUnreadCount(this.getUserId());
             document.querySelectorAll('.notif-badge').forEach(b => {
-                b.textContent = count;
-                b.classList.toggle('hidden', !count);
+                b.textContent = count; b.classList.toggle('hidden', !count);
             });
         } catch(e) {}
-    }
-};
+    },
 
-// ─────────────────────────────────────────────────────────────────────────────
-// OTP INPUT — auto-focus, backspace, paste, filled class
-// ─────────────────────────────────────────────────────────────────────────────
-function setupOTPInputs() {
-    document.querySelectorAll('.otp-inputs').forEach(container => {
-        const inputs = [...container.querySelectorAll('input')];
+    // ── TOAST ─────────────────────────────────────────────────────
+    _toast(msg, type='info') {
+        if (typeof Toast !== 'undefined') {
+            if (type==='success') Toast.success(msg);
+            else if (type==='error') Toast.error(msg);
+            else Toast.info(msg);
+            return;
+        }
+        let c = document.getElementById('_authToasts');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = '_authToasts';
+            c.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;';
+            document.body.appendChild(c);
+        }
+        const t = document.createElement('div');
+        const bg = type==='success' ? '#f0fdf4;color:#16a34a;border:1px solid #bbf7d0'
+                 : type==='error'   ? '#fef2f2;color:#dc2626;border:1px solid #fecaca'
+                 :                    '#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe';
+        t.style.cssText = `padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.12);white-space:nowrap;background:${bg};`;
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    },
 
-        inputs.forEach((input, idx) => {
+    // ── OTP INPUT SETUP ───────────────────────────────────────────
+    _setupOTPInputs() {
+        const container = document.getElementById('otpBoxes');
+        if (!container) return;
+        const inputs = [...container.querySelectorAll('.otp-box')];
+        if (!inputs.length) return;
 
-            // Auto-advance on input
-            input.addEventListener('input', (e) => {
-                const val = e.target.value.replace(/\D/g, '');
-                e.target.value = val.slice(-1); // keep only last digit
-                e.target.classList.toggle('filled', !!e.target.value);
-
-                if (e.target.value && idx < inputs.length - 1) {
-                    inputs[idx + 1].focus();
-                }
-
-                // Auto-submit if all filled
-                if (inputs.every(i => i.value)) {
-                    setTimeout(() => Auth.verifyLoginOTP(), 200);
-                }
+        inputs.forEach((inp, idx) => {
+            inp.addEventListener('input', e => {
+                const val = e.target.value.replace(/\D/g,'');
+                e.target.value = val.slice(-1);
+                e.target.style.borderColor = val ? '#6c47ff' : '#e5e7eb';
+                e.target.style.background  = val ? '#f5f0ff' : '#fafafa';
+                if (val && idx < inputs.length - 1) inputs[idx+1].focus();
+                if (inputs.every(i => i.value)) setTimeout(() => Auth.verifyLoginOTP(), 250);
             });
 
-            // Backspace → go back
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Backspace') {
-                    if (!e.target.value && idx > 0) {
-                        inputs[idx - 1].value = '';
-                        inputs[idx - 1].classList.remove('filled');
-                        inputs[idx - 1].focus();
-                    } else {
-                        e.target.classList.remove('filled');
-                    }
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+                    inputs[idx-1].value = '';
+                    inputs[idx-1].style.borderColor = '#e5e7eb';
+                    inputs[idx-1].style.background  = '#fafafa';
+                    inputs[idx-1].focus();
                 }
                 if (e.key === 'Enter') Auth.verifyLoginOTP();
             });
 
-            // Select all on focus (easy replace)
-            input.addEventListener('focus', (e) => e.target.select());
+            inp.addEventListener('focus', e => e.target.select());
 
-            // Paste full OTP
-            input.addEventListener('paste', (e) => {
+            inp.addEventListener('paste', e => {
                 e.preventDefault();
-                const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-                pasted.split('').forEach((char, i) => {
+                const pasted = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+                pasted.split('').forEach((ch,i) => {
                     if (inputs[i]) {
-                        inputs[i].value = char;
-                        inputs[i].classList.add('filled');
+                        inputs[i].value = ch;
+                        inputs[i].style.borderColor = '#6c47ff';
+                        inputs[i].style.background  = '#f5f0ff';
                     }
                 });
-                const nextEmpty = inputs.findIndex(i => !i.value);
-                (nextEmpty >= 0 ? inputs[nextEmpty] : inputs[inputs.length - 1]).focus();
-
-                if (pasted.length === 6) {
-                    setTimeout(() => Auth.verifyLoginOTP(), 300);
-                }
+                const next = inputs.findIndex(i => !i.value);
+                (next>=0 ? inputs[next] : inputs[inputs.length-1]).focus();
+                if (pasted.length === 6) setTimeout(() => Auth.verifyLoginOTP(), 300);
             });
         });
-    });
-}
+    }
+};
+
+function setupOTPInputs() { Auth._setupOTPInputs(); }
