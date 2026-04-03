@@ -8,171 +8,206 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        /* ── Auth Modal ───────────────────────────── */
-        .auth-modal { max-width: 400px; width: 92%; }
-
-        .auth-header {
-            text-align: center;
-            margin-bottom: 28px;
+        /* ─── ALL AUTH STYLES INLINE — no dependency on style.css ─── */
+        #authModal .modal-overlay, #authModal {
+            font-family: 'Inter', -apple-system, sans-serif;
         }
-        .auth-header .brand-logo {
-            font-size: 28px;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary), #6c63ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -1px;
+
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.5);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.active { display: flex; }
+
+        /* Modal box */
+        .auth-modal-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px 24px;
+            width: 100%; max-width: 380px;
+            max-height: 95vh; overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,.15);
+            animation: authIn .2s ease;
+        }
+        @keyframes authIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+        .auth-close {
+            position: absolute; top: 16px; right: 16px;
+            background: #f5f5f5; border: none; border-radius: 50%;
+            width: 32px; height: 32px; font-size: 16px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            color: #666; z-index: 1;
+        }
+        .auth-close:hover { background: #eee; }
+
+        /* Step dots */
+        .auth-dots { display:flex; justify-content:center; gap:5px; margin-bottom:20px; }
+        .auth-dot {
+            height: 6px; border-radius: 3px;
+            background: #e5e7eb; transition: all .25s;
+            width: 6px;
+        }
+        .auth-dot.active { background: #6c47ff; width: 20px; }
+
+        /* Header */
+        .auth-head { text-align:center; margin-bottom:24px; }
+        .auth-brand {
+            font-size: 22px; font-weight: 800; letter-spacing: -1px;
+            background: linear-gradient(135deg,#6c47ff,#a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             margin-bottom: 6px;
         }
-        .auth-header h2 {
-            font-size: 20px;
-            font-weight: 700;
-            margin: 0 0 4px;
-        }
-        .auth-header p {
-            color: var(--text2);
-            font-size: 14px;
-            margin: 0;
-        }
+        .auth-head h2 { font-size:18px; font-weight:700; color:#111; margin:0 0 4px; }
+        .auth-head p  { font-size:13px; color:#888; margin:0; }
 
-        /* Phone Input with +91 prefix */
-        .phone-input-wrapper {
-            display: flex;
-            align-items: center;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            overflow: hidden;
-            background: var(--surface);
+        /* Phone input */
+        .phone-wrap {
+            display:flex; align-items:center;
+            border: 2px solid #e5e7eb; border-radius:12px;
+            overflow:hidden; background:#fafafa;
             transition: border-color .2s;
         }
-        .phone-input-wrapper:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 79,70,229), .1);
+        .phone-wrap:focus-within { border-color:#6c47ff; background:#fff; }
+        .phone-flag {
+            padding: 13px 12px; background:#f0f0f0;
+            color:#555; font-size:14px; font-weight:600;
+            border-right: 1px solid #e5e7eb; white-space:nowrap;
         }
-        .phone-prefix {
-            padding: 12px 14px;
-            background: var(--surface2);
-            color: var(--text2);
-            font-size: 15px;
-            font-weight: 600;
-            border-right: 1px solid var(--border);
-            white-space: nowrap;
+        .phone-wrap input {
+            flex:1; border:none; outline:none;
+            padding:13px 14px; font-size:16px;
+            background:transparent; color:#111;
+            font-family:inherit;
         }
-        .phone-input-wrapper input {
-            border: none !important;
+
+        /* OTP boxes — FIXED inline styles to avoid CSS conflicts */
+        .otp-row {
+            display: flex !important;
+            flex-direction: row !important;
+            gap: 8px !important;
+            justify-content: center !important;
+            margin: 20px 0 !important;
+        }
+        .otp-box {
+            width: 44px !important;
+            height: 52px !important;
+            text-align: center !important;
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            border: 2px solid #e5e7eb !important;
+            border-radius: 10px !important;
+            background: #fafafa !important;
+            color: #111 !important;
             outline: none !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            flex: 1;
-            padding: 12px 14px;
-            font-size: 16px;
-            background: transparent;
+            transition: border-color .15s, background .15s !important;
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            flex: 0 0 44px !important;
+            box-sizing: border-box !important;
+        }
+        .otp-box:focus  { border-color:#6c47ff !important; background:#f5f0ff !important; }
+        .otp-box.filled { border-color:#6c47ff !important; }
+        .otp-box.shake  { animation: shake .3s ease; }
+        @keyframes shake {
+            0%,100% { transform:translateX(0); }
+            25%      { transform:translateX(-6px); }
+            75%      { transform:translateX(6px); }
         }
 
-        /* OTP Boxes */
-        .otp-inputs {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin: 20px 0 24px;
+        /* Sent info box */
+        .otp-sent-box {
+            background:#f5f0ff; border-radius:10px;
+            padding:10px 14px; text-align:center;
+            font-size:13px; color:#666; margin-bottom:4px;
         }
-        .otp-inputs input {
-            width: 46px;
-            height: 52px;
-            text-align: center;
-            font-size: 22px;
-            font-weight: 700;
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            background: var(--surface);
-            color: var(--text);
-            transition: border-color .2s, box-shadow .2s;
-            caret-color: var(--primary);
+        .otp-sent-box strong { color:#6c47ff; }
+
+        /* Back link */
+        .back-btn {
+            display:flex; align-items:center; gap:4px;
+            background:none; border:none; color:#888;
+            font-size:13px; cursor:pointer; padding:0;
+            margin-bottom:16px; font-family:inherit;
         }
-        .otp-inputs input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(var(--primary-rgb,79,70,229),.1);
-            outline: none;
+        .back-btn:hover { color:#6c47ff; }
+
+        /* Resend */
+        .resend-row { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; font-size:13px; color:#888; }
+        .resend-btn { background:none; border:none; color:#6c47ff; font-weight:600; cursor:pointer; font-size:13px; font-family:inherit; padding:4px 8px; border-radius:6px; }
+        .resend-btn:disabled { color:#bbb; cursor:not-allowed; }
+
+        /* Form controls inside modal */
+        .auth-label { display:block; font-size:12px; font-weight:600; color:#555; margin-bottom:5px; }
+        .auth-input {
+            width:100%; padding:12px 14px; border:2px solid #e5e7eb;
+            border-radius:10px; font-size:14px; font-family:inherit;
+            color:#111; background:#fafafa; outline:none;
+            transition:border-color .2s; box-sizing:border-box;
         }
-        .otp-inputs input.filled {
-            border-color: var(--primary);
-            background: rgba(var(--primary-rgb,79,70,229),.06);
+        .auth-input:focus { border-color:#6c47ff; background:#fff; }
+        .auth-group { margin-bottom:14px; }
+        .auth-hint { font-size:11px; color:#aaa; margin-top:4px; }
+
+        /* Primary button */
+        .auth-btn {
+            width:100%; padding:14px; background:#6c47ff;
+            color:#fff; border:none; border-radius:12px;
+            font-size:15px; font-weight:700; cursor:pointer;
+            font-family:inherit; transition:background .15s;
+            display:flex; align-items:center; justify-content:center; gap:8px;
+        }
+        .auth-btn:hover   { background:#5535d4; }
+        .auth-btn:disabled { background:#a5b4fc; cursor:not-allowed; }
+
+        /* Section divider in KYC */
+        .kyc-section-title {
+            font-size:11px; font-weight:700; color:#888;
+            text-transform:uppercase; letter-spacing:.08em;
+            margin: 18px 0 10px; padding-bottom:6px;
+            border-bottom:1px solid #f0f0f0;
         }
 
-        /* Resend row */
-        .resend-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 16px;
-            font-size: 13px;
-            color: var(--text2);
+        /* KYC file upload */
+        .kyc-upload {
+            border:2px dashed #e5e7eb; border-radius:12px;
+            padding:20px; text-align:center;
+            cursor:pointer; position:relative;
+            background:#fafafa; transition:border-color .2s;
         }
-        .resend-row button {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-weight: 600;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-        .resend-row button:disabled {
-            color: var(--text2);
-            cursor: not-allowed;
-        }
+        .kyc-upload:hover { border-color:#6c47ff; }
+        .kyc-upload input { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%; }
+        .kyc-upload .upload-ico { font-size:28px; margin-bottom:6px; }
+        .kyc-upload p { font-size:13px; color:#888; }
+        .kyc-upload strong { color:#6c47ff; }
+        #docPreviewName { font-size:12px; color:#6c47ff; font-weight:600; margin-top:8px; }
 
-        .otp-sent-info {
-            background: var(--surface2);
-            border-radius: 10px;
-            padding: 12px 16px;
-            font-size: 13px;
-            color: var(--text2);
-            text-align: center;
-            margin-bottom: 8px;
+        /* Spinner */
+        .mini-spin {
+            width:14px; height:14px;
+            border:2px solid rgba(255,255,255,.4);
+            border-top-color:#fff; border-radius:50%;
+            animation:spin .6s linear infinite;
+            display:inline-block;
         }
-        .otp-sent-info strong { color: var(--text); }
+        @keyframes spin { to { transform:rotate(360deg); } }
 
-        .back-link {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: none;
-            border: none;
-            color: var(--text2);
-            font-size: 13px;
-            cursor: pointer;
-            padding: 0;
-            margin-bottom: 20px;
-        }
-        .back-link:hover { color: var(--primary); }
-
-        /* Step indicator */
-        .step-dots {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            margin-bottom: 24px;
-        }
-        .step-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            background: var(--border);
-            transition: background .2s, width .2s;
-        }
-        .step-dot.active {
-            background: var(--primary);
-            width: 24px;
-            border-radius: 4px;
-        }
+        /* Terms note */
+        .auth-terms { text-align:center; font-size:11px; color:#bbb; margin-top:12px; }
     </style>
 </head>
 <body>
 
-<!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+<!-- ══ HEADER ═══════════════════════════════════════════════════ -->
 <header class="header">
     <div class="container">
         <a href="index.html" class="header-logo"><span>Conitek</span></a>
@@ -196,12 +231,12 @@
     </div>
 </header>
 
-<!-- ══ ACCOUNT PAGE CONTENT ════════════════════════════════════════════════ -->
+<!-- ══ ACCOUNT PAGE CONTENT ══════════════════════════════════════ -->
 <main class="main-content" id="accountPage">
     <div class="page-loader"><div class="loading-spinner"></div></div>
 </main>
 
-<!-- ══ BOTTOM NAV ══════════════════════════════════════════════════════════ -->
+<!-- ══ BOTTOM NAV ═══════════════════════════════════════════════ -->
 <nav class="bottom-nav">
     <a href="index.html"    class="bottom-nav-item"><span class="nav-icon">🏠</span>Home</a>
     <a href="category.html" class="bottom-nav-item"><span class="nav-icon">📂</span>Categories</a>
@@ -210,113 +245,317 @@
     <a href="account.html"  class="bottom-nav-item active"><span class="nav-icon">👤</span>Account</a>
 </nav>
 
-<!-- ══ AUTH MODAL ══════════════════════════════════════════════════════════ -->
+<!-- ══ AUTH MODAL ════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="authModal">
-    <div class="modal auth-modal">
-        <button class="modal-close" onclick="Auth.hideLoginModal()">✕</button>
+    <div class="auth-modal-box">
+        <button class="auth-close" onclick="Auth.hideLoginModal()">✕</button>
 
-        <!-- Step Dots -->
-        <div class="step-dots">
-            <div class="step-dot active" id="dot1"></div>
-            <div class="step-dot"        id="dot2"></div>
-            <div class="step-dot"        id="dot3"></div>
+        <!-- Step dots -->
+        <div class="auth-dots">
+            <div class="auth-dot active" id="dot1"></div>
+            <div class="auth-dot"        id="dot2"></div>
+            <div class="auth-dot"        id="dot3"></div>
         </div>
 
-        <!-- ── STEP 1: Phone Number ── -->
+        <!-- ── STEP 1: Phone ── -->
         <div id="phoneStep">
-            <div class="auth-header">
-                <div class="brand-logo">Conitek</div>
+            <div class="auth-head">
+                <div class="auth-brand">Conitek</div>
                 <h2>Welcome!</h2>
                 <p>Enter your mobile number to continue</p>
             </div>
-
-            <div class="form-group">
-                <label>Mobile Number</label>
-                <div class="phone-input-wrapper">
-                    <span class="phone-prefix">🇮🇳 +91</span>
+            <div class="auth-group">
+                <label class="auth-label">Mobile Number</label>
+                <div class="phone-wrap">
+                    <span class="phone-flag">🇮🇳 +91</span>
                     <input type="tel" id="authPhone" maxlength="10" inputmode="numeric"
                            placeholder="98765 43210"
                            oninput="this.value=this.value.replace(/\D/g,'')"
                            onkeypress="if(event.key==='Enter') Auth.sendLoginOTP()">
                 </div>
             </div>
-
-            <button class="btn btn-primary btn-full mt-2" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">
+            <button class="auth-btn" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">
                 Send OTP →
             </button>
-
-            <p style="text-align:center;font-size:12px;color:var(--text2);margin-top:16px;">
-                By continuing, you agree to our Terms & Privacy Policy
-            </p>
+            <p class="auth-terms">By continuing you agree to our Terms &amp; Privacy Policy</p>
         </div>
 
-        <!-- ── STEP 2: OTP Verification ── -->
-        <div id="otpStep" class="hidden">
-            <button class="back-link" onclick="Auth.goBackToPhone()">← Change number</button>
-
-            <div class="auth-header">
+        <!-- ── STEP 2: OTP ── -->
+        <div id="otpStep" style="display:none;">
+            <button class="back-btn" onclick="Auth.goBackToPhone()">← Change number</button>
+            <div class="auth-head">
                 <h2>Enter OTP</h2>
-                <p>We sent a 6-digit code to</p>
+                <p>6-digit code sent to</p>
+            </div>
+            <div class="otp-sent-box">📱 <strong id="displayPhone">+91 XXXXXXXXXX</strong></div>
+
+            <!-- OTP boxes — each has forced inline style too as backup -->
+            <div class="otp-row" id="otpBoxes">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric" autocomplete="one-time-code"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
+                <input class="otp-box" type="tel" maxlength="1" inputmode="numeric"
+                       style="width:44px;height:52px;text-align:center;font-size:22px;font-weight:700;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;color:#111;outline:none;padding:0;flex:0 0 44px;">
             </div>
 
-            <div class="otp-sent-info">
-                📱 <strong id="displayPhone">+91 XXXXXXXXXX</strong>
-            </div>
-
-            <div class="otp-inputs" id="otpBoxes">
-                <input type="text" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
-                <input type="text" maxlength="1" inputmode="numeric">
-                <input type="text" maxlength="1" inputmode="numeric">
-                <input type="text" maxlength="1" inputmode="numeric">
-                <input type="text" maxlength="1" inputmode="numeric">
-                <input type="text" maxlength="1" inputmode="numeric">
-            </div>
-
-            <button class="btn btn-primary btn-full" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">
+            <button class="auth-btn" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">
                 Verify OTP ✓
             </button>
-
             <div class="resend-row">
                 <span id="resendTimer">Resend in 30s</span>
-                <button id="resendOtpBtn" onclick="Auth.resendOTP()" disabled>Resend OTP</button>
+                <button class="resend-btn" id="resendOtpBtn" onclick="Auth.resendOTP()" disabled>Resend OTP</button>
             </div>
         </div>
 
-        <!-- ── STEP 3: New User — Enter Name ── -->
-        <div id="nameStep" class="hidden">
-            <div class="auth-header">
-                <div style="font-size:40px;margin-bottom:8px;">👋</div>
-                <h2>New Account</h2>
-                <p>What should we call you?</p>
+        <!-- ── STEP 3: New User Name (quick) ── -->
+        <div id="nameStep" style="display:none;">
+            <div class="auth-head">
+                <div style="font-size:36px;margin-bottom:8px;">👋</div>
+                <h2>Almost there!</h2>
+                <p>Tell us your name to continue</p>
             </div>
-
-            <div class="form-group">
-                <label>Your Name *</label>
-                <input type="text" class="form-control" id="authName"
-                       placeholder="Enter your full name"
+            <div class="auth-group">
+                <label class="auth-label">Your Full Name *</label>
+                <input type="text" class="auth-input" id="authName" placeholder="Enter your full name"
                        onkeypress="if(event.key==='Enter') Auth.completeRegistration()">
             </div>
-
-            <div class="form-group" style="margin-top:4px;">
-                <label>Referral Code <small class="text-muted">(optional)</small></label>
-                <input type="text" class="form-control" id="authReferral"
-                       placeholder="Enter referral code" style="text-transform:uppercase;">
-            </div>
-
-            <button class="btn btn-primary btn-full mt-2" id="registerBtn" onclick="Auth.completeRegistration()">
-                Create Account 🎉
+            <button class="auth-btn" id="registerBtn" onclick="Auth.completeRegistration()">
+                Continue to KYC →
             </button>
         </div>
-
     </div>
 </div>
 
-<!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
+<!-- ══ KYC MODAL ════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="kycModal">
+    <div class="auth-modal-box" style="max-width:440px;">
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="font-size:32px;margin-bottom:8px;">📋</div>
+            <h2 style="font-size:18px;font-weight:700;color:#111;margin:0 0 4px;">KYC Verification</h2>
+            <p style="font-size:13px;color:#888;margin:0;">Required to place orders. Takes 2 minutes.</p>
+        </div>
+
+        <!-- KYC Status Banner -->
+        <div id="kycStatusBanner" style="display:none;padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:13px;font-weight:600;"></div>
+
+        <div id="kycFormWrap">
+            <!-- ── Personal Info ── -->
+            <div class="kyc-section-title">👤 Personal Information</div>
+
+            <div class="auth-group">
+                <label class="auth-label">Full Name *</label>
+                <input type="text" class="auth-input" id="kycName" placeholder="As on PAN card">
+            </div>
+            <div class="auth-group">
+                <label class="auth-label">Registered Mobile</label>
+                <input type="text" class="auth-input" id="kycPhone" readonly
+                       style="background:#f5f5f5;color:#888;cursor:not-allowed;">
+                <div class="auth-hint">✅ Verified via OTP</div>
+            </div>
+            <div class="auth-group">
+                <label class="auth-label">Email Address *</label>
+                <input type="email" class="auth-input" id="kycEmail" placeholder="you@example.com">
+            </div>
+
+            <!-- ── Tax & Identity ── -->
+            <div class="kyc-section-title">🪪 Tax & Identity Proof</div>
+
+            <div class="auth-group">
+                <label class="auth-label">PAN Card Number *</label>
+                <input type="text" class="auth-input" id="kycPan"
+                       placeholder="ABCDE1234F" maxlength="10"
+                       oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="auth-group">
+                <label class="auth-label">GST Number <span style="font-weight:400;color:#aaa;">(Optional)</span></label>
+                <input type="text" class="auth-input" id="kycGst"
+                       placeholder="22AAAAA0000A1Z5" maxlength="15"
+                       oninput="this.value=this.value.toUpperCase()">
+            </div>
+
+            <!-- ── Bank Details ── -->
+            <div class="kyc-section-title">🏦 Bank Account Details</div>
+
+            <div class="auth-group">
+                <label class="auth-label">Account Holder Name *</label>
+                <input type="text" class="auth-input" id="kycAccName" placeholder="As on bank records">
+            </div>
+            <div class="auth-group">
+                <label class="auth-label">Account Number *</label>
+                <input type="text" class="auth-input" id="kycAccNum"
+                       placeholder="Enter account number" inputmode="numeric"
+                       oninput="this.value=this.value.replace(/\D/g,'')">
+            </div>
+            <div class="auth-group">
+                <label class="auth-label">IFSC Code *</label>
+                <input type="text" class="auth-input" id="kycIfsc"
+                       placeholder="SBIN0001234" maxlength="11"
+                       oninput="this.value=this.value.toUpperCase()">
+            </div>
+
+            <!-- ── Document Upload ── -->
+            <div class="kyc-section-title">📎 Supporting Document *</div>
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">
+                Upload one of: Bank Statement, Cancelled Cheque, or Bank Passbook (JPG/PNG/PDF, max 5MB)
+            </p>
+            <div class="kyc-upload" id="docUploadZone">
+                <input type="file" id="kycDoc" accept="image/*,.pdf"
+                       onchange="handleDocSelect(this)">
+                <div class="upload-ico">📤</div>
+                <p><strong>Click to upload</strong> or drag & drop</p>
+                <div id="docPreviewName"></div>
+            </div>
+
+            <button class="auth-btn" id="submitKycBtn" onclick="submitKYC()"
+                    style="margin-top:20px;">
+                Submit KYC
+            </button>
+
+            <p style="text-align:center;font-size:11px;color:#bbb;margin-top:10px;">
+                Your data is encrypted & secure. Admin will verify within 24–48 hours.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- ══ SCRIPTS ═══════════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase-client.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/app.js"></script>
 <script src="../js/account.js"></script>
 
+<script>
+// ── KYC DOCUMENT UPLOAD ──────────────────────────────────────────
+let kycDocFile = null;
+
+function handleDocSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File too large. Max 5MB allowed.');
+        input.value = '';
+        return;
+    }
+    kycDocFile = file;
+    document.getElementById('docPreviewName').textContent = '✅ ' + file.name;
+    document.getElementById('docUploadZone').style.borderColor = '#6c47ff';
+}
+
+// ── SHOW KYC MODAL ───────────────────────────────────────────────
+function showKycModal() {
+    // Pre-fill phone
+    const phone = Auth.phoneNumber?.replace(/^91/, '') || '';
+    if (phone) {
+        const formatted = phone.replace(/(\d{5})(\d{5})/, '$1 $2');
+        document.getElementById('kycPhone').value = '+91 ' + formatted;
+    }
+    // Pre-fill name if available
+    if (Auth.currentProfile?.full_name) {
+        document.getElementById('kycName').value = Auth.currentProfile.full_name;
+    }
+
+    document.getElementById('kycModal').classList.add('active');
+}
+
+// ── SUBMIT KYC ───────────────────────────────────────────────────
+async function submitKYC() {
+    const name    = document.getElementById('kycName').value.trim();
+    const email   = document.getElementById('kycEmail').value.trim();
+    const pan     = document.getElementById('kycPan').value.trim();
+    const gst     = document.getElementById('kycGst').value.trim();
+    const accName = document.getElementById('kycAccName').value.trim();
+    const accNum  = document.getElementById('kycAccNum').value.trim();
+    const ifsc    = document.getElementById('kycIfsc').value.trim();
+
+    // Validate
+    if (!name)    { alert('Full name is required'); return; }
+    if (!email || !email.includes('@')) { alert('Valid email is required'); return; }
+    if (!pan || pan.length !== 10) { alert('Valid 10-character PAN is required'); return; }
+    if (!accName) { alert('Account holder name is required'); return; }
+    if (!accNum)  { alert('Account number is required'); return; }
+    if (!ifsc || ifsc.length < 11) { alert('Valid IFSC code is required'); return; }
+    if (!kycDocFile) { alert('Please upload a supporting document'); return; }
+
+    const btn = document.getElementById('submitKycBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="mini-spin"></span> Uploading document...';
+
+    try {
+        // 1. Upload document to Supabase storage
+        const sb = window._supabaseClient || window.supabase;
+        const ext = kycDocFile.name.split('.').pop();
+        const userId = Auth.getUserId();
+        const path = `kyc/${userId}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await sb.storage.from('kyc-docs').upload(path, kycDocFile);
+        let docUrl = null;
+        if (!uploadError) {
+            const { data } = sb.storage.from('kyc-docs').getPublicUrl(path);
+            docUrl = data?.publicUrl;
+        }
+
+        btn.innerHTML = '<span class="mini-spin"></span> Submitting KYC...';
+
+        // 2. Save KYC data to kyc_submissions table
+        const phone10 = Auth.phoneNumber?.replace(/^91/, '') || '';
+        const { error: kycError } = await sb.from('kyc_submissions').upsert({
+            user_id:          userId,
+            full_name:        name,
+            phone:            phone10,
+            email:            email,
+            pan_number:       pan,
+            gst_number:       gst || null,
+            bank_holder_name: accName,
+            bank_account_num: accNum,
+            bank_ifsc:        ifsc,
+            doc_url:          docUrl,
+            status:           'pending',
+            submitted_at:     new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+        if (kycError) throw kycError;
+
+        // 3. Update profile with name & email
+        await DB.updateProfile(userId, {
+            full_name:   name,
+            email:       email,
+            kyc_status:  'pending',
+        });
+
+        // 4. Show success
+        document.getElementById('kycFormWrap').innerHTML = `
+            <div style="text-align:center;padding:20px 0;">
+                <div style="font-size:56px;margin-bottom:16px;">🎉</div>
+                <h3 style="font-size:18px;font-weight:700;color:#111;margin-bottom:8px;">KYC Submitted!</h3>
+                <p style="font-size:14px;color:#666;line-height:1.6;">
+                    Your KYC is under review.<br>
+                    Admin will verify within <strong>24–48 hours</strong>.<br>
+                    You will be notified once approved.
+                </p>
+                <button onclick="document.getElementById('kycModal').classList.remove('active')"
+                    style="margin-top:24px;padding:12px 28px;background:#6c47ff;color:#fff;
+                           border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">
+                    Got it ✓
+                </button>
+            </div>`;
+
+    } catch(e) {
+        alert('KYC submission failed: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Submit KYC';
+    }
+}
+
+// Expose showKycModal globally so auth.js can call it
+window.showKycModal = showKycModal;
+</script>
 </body>
 </html>
