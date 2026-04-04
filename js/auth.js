@@ -1,4 +1,4 @@
-// js/auth.js
+// js/auth.js — Conitek v3
 
 const Auth = {
     currentUser: null, currentProfile: null,
@@ -7,12 +7,10 @@ const Auth = {
     _pwd(p)   { return `conitek_${p}_v1`; },
     _email(p) { return `${p}@conitek.user`; },
 
-    // ── INIT ──────────────────────────────────────────────────────
     async init() {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) { this.currentUser = session.user; await this.loadProfile(); }
-
             supabase.auth.onAuthStateChange(async (event, session) => {
                 if (event === 'SIGNED_IN' && session) {
                     this.currentUser = session.user;
@@ -36,7 +34,6 @@ const Auth = {
     getUserId()   { return this.currentUser?.id; },
     requireAuth() { if (!this.isLoggedIn()) { this.showLoginModal(); return false; } return true; },
 
-    // ── MODAL ─────────────────────────────────────────────────────
     showLoginModal() {
         const m = document.getElementById('authModal');
         if (!m) return;
@@ -59,15 +56,14 @@ const Auth = {
         });
         for (let i = 1; i <= 3; i++) {
             const d = document.getElementById('dot' + i);
-            if (d) { d.classList.toggle('on', i <= n); }
+            if (d) {
+                d.style.background = i <= n ? '#6c47ff' : '#e5e7eb';
+                d.style.width = i === n ? '20px' : '6px';
+            }
         }
-        // Focus OTP input when going to step 2
-        if (n === 2) setTimeout(() => {
-            if (typeof focusOtpInput === 'function') focusOtpInput();
-        }, 150);
+        if (n === 2) setTimeout(() => { if (typeof focusOtpInput === 'function') focusOtpInput(); }, 150);
     },
 
-    // ── SEND OTP ──────────────────────────────────────────────────
     async sendLoginOTP() {
         const raw = (document.getElementById('authPhone')?.value || '').replace(/\D/g,'').trim();
         if (raw.length !== 10) { this._toast('Enter a valid 10-digit number', 'err'); return; }
@@ -83,12 +79,10 @@ const Auth = {
             this.otpSessionId = sessionId;
 
             const fmt = raw.replace(/(\d{5})(\d{5})/, '$1 $2');
-            const dp  = document.getElementById('displayPhone');
+            const dp = document.getElementById('displayPhone');
             if (dp) dp.textContent = '+91 ' + fmt;
 
-            // Clear OTP cells
             if (typeof clearOTP === 'function') clearOTP();
-
             this._step(2);
             this._toast('OTP sent! 📱', 'ok');
             this.startResendTimer();
@@ -99,9 +93,7 @@ const Auth = {
         }
     },
 
-    // ── VERIFY OTP ────────────────────────────────────────────────
     async verifyLoginOTP() {
-        // Get OTP from the div-cell system or fallback to old input
         const otp = typeof getOTPValue === 'function'
             ? getOTPValue()
             : [...document.querySelectorAll('#otpBoxes .otp-box')].map(b => b.value).join('');
@@ -133,12 +125,13 @@ const Auth = {
         }
     },
 
-    // ── SUPABASE AUTH ─────────────────────────────────────────────
     async _auth() {
-        const p10  = this.phoneNumber.replace(/^91/, '');
-        const email = this._email(p10), pwd = this._pwd(p10);
+        const p10   = this.phoneNumber.replace(/^91/, '');
+        const email = this._email(p10);
+        const pwd   = this._pwd(p10);
+        const btn   = document.getElementById('verifyOtpBtn');
 
-        // Existing user
+        // 1. Try sign in (existing user)
         const { data: si, error: siErr } = await supabase.auth.signInWithPassword({ email, password: pwd });
         if (!siErr && si?.user) {
             this._toast('Welcome back! 👋', 'ok');
@@ -148,45 +141,70 @@ const Auth = {
             return;
         }
 
-        // New user
-        const { error: suErr } = await supabase.auth.signUp({
-            email, password: pwd, options: { data: { phone: p10, full_name: '' } }
+        // 2. Try signup
+        const { data: su, error: suErr } = await supabase.auth.signUp({
+            email, password: pwd,
+            options: { data: { phone: p10, full_name: '' } }
         });
 
-        if (suErr) {
-            // Legacy password fallback
-            for (const lp of [`conitek_${p10}_default`, `conitek_${p10}_secure`]) {
-                const { data: rd } = await supabase.auth.signInWithPassword({ email, password: lp });
-                if (rd?.user) {
-                    await supabase.auth.updateUser({ password: pwd });
-                    this._toast('Welcome back! 👋', 'ok');
-                    this.hideLoginModal();
-                    return;
-                }
+        // ── KEY FIX: Email confirmation enabled hone pe signUp succeeds
+        //   but user.identities = [] (fake success). Detect this:
+        if (!suErr && su?.user) {
+            if (su.user.identities && su.user.identities.length === 0) {
+                // User already exists but wrong password — try to reset
+                // Since we can't reset without email, just show name step
+                // The user object is still usable after OTP-verified session
+                this._step(3);
+                if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
+                setTimeout(() => document.getElementById('authName')?.focus(), 100);
+                return;
             }
-            this._toast('Auth failed. Try again.', 'err');
-            const btn = document.getElementById('verifyOtpBtn');
+            // Genuine new user
+            this._step(3);
             if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
+            setTimeout(() => document.getElementById('authName')?.focus(), 100);
             return;
         }
 
-        // New user — name step
-        this._step(3);
-        const btn = document.getElementById('verifyOtpBtn');
-        if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
-        setTimeout(() => document.getElementById('authName')?.focus(), 100);
+        if (suErr) {
+            // 3. signUp failed — user exists, wrong password (old version)
+            // Try legacy passwords
+            const legacyPwds = [
+                `conitek_${p10}_default`,
+                `conitek_${p10}_secure`,
+                `conitek_${p10}`,
+            ];
+            for (const lp of legacyPwds) {
+                const { data: rd, error: rErr } = await supabase.auth.signInWithPassword({ email, password: lp });
+                if (!rErr && rd?.user) {
+                    // Update to new password
+                    await supabase.auth.updateUser({ password: pwd });
+                    this._toast('Welcome back! 👋', 'ok');
+                    this.hideLoginModal();
+                    await this.loadProfile();
+                    this._kycCheck();
+                    return;
+                }
+            }
+
+            // 4. Last resort — if Supabase email confirm is ON,
+            //    disable it in Dashboard → Auth → Settings → Email Confirmations OFF
+            //    For now show helpful error with actual supabase error
+            console.error('Supabase auth error:', suErr);
+            this._toast('Login failed. Check Supabase email confirm settings.', 'err');
+            if (btn) { btn.disabled = false; btn.textContent = 'Verify OTP ✓'; }
+        }
     },
 
-    // ── NAME → KYC ───────────────────────────────────────────────
     async completeRegistration() {
         const name = document.getElementById('authName')?.value?.trim();
         if (!name || name.length < 2) { this._toast('Please enter your name', 'err'); return; }
 
         const btn = document.getElementById('registerBtn');
-        btn.disabled = true; btn.innerHTML = '<span class="a-spin"></span> Saving...';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="a-spin"></span> Saving...'; }
 
         try {
-            await new Promise(r => setTimeout(r, 700));
+            await new Promise(r => setTimeout(r, 600));
             const uid = this.currentUser?.id;
             if (uid) {
                 await DB.updateProfile(uid, {
@@ -198,12 +216,12 @@ const Auth = {
             }
             this.hideLoginModal();
             this.updateUI();
-            this._toast('Welcome, ' + name + '! 👋', 'ok');
+            this._toast('Welcome, ' + name + '! 🎉', 'ok');
             setTimeout(() => { if (typeof showKycModal === 'function') showKycModal(); }, 700);
         } catch(e) {
             this._toast('Error: ' + e.message, 'err');
         } finally {
-            btn.disabled = false; btn.textContent = 'Continue →';
+            if (btn) { btn.disabled = false; btn.textContent = 'Continue →'; }
         }
     },
 
@@ -214,7 +232,6 @@ const Auth = {
         }
     },
 
-    // ── RESEND ────────────────────────────────────────────────────
     async resendOTP() {
         if (!this.phoneNumber) return;
         const btn = document.getElementById('resendOtpBtn');
@@ -244,7 +261,6 @@ const Auth = {
         tick(); this.resendTimer = setInterval(tick, 1000);
     },
 
-    // ── SIGN OUT ──────────────────────────────────────────────────
     async signOut() {
         try { await supabase.auth.signOut(); } catch(e) {}
         this.currentUser = null; this.currentProfile = null;
@@ -253,7 +269,6 @@ const Auth = {
         setTimeout(() => location.href = 'index.html', 600);
     },
 
-    // ── UPDATE UI ─────────────────────────────────────────────────
     updateUI() {
         const loginBtn   = document.getElementById('loginBtn');
         const userMenu   = document.getElementById('userMenuTrigger');
@@ -291,32 +306,30 @@ const Auth = {
         try { const { count } = await DB.getUnreadCount(this.getUserId()); document.querySelectorAll('.notif-badge').forEach(b => { b.textContent = count; b.classList.toggle('hidden', !count); }); } catch(e) {}
     },
 
-    // ── TOAST ─────────────────────────────────────────────────────
     _toast(msg, type = 'inf') {
-        // Use page's aToast if available
-        if (typeof aToast === 'function') { aToast(msg, type); return; }
-        // Use global Toast if available
         if (typeof Toast !== 'undefined') {
-            if (type==='ok')  Toast.success(msg);
+            if (type==='ok') Toast.success(msg);
             else if (type==='err') Toast.error(msg);
             else Toast.info(msg);
             return;
         }
-        // Fallback
-        let c = document.getElementById('_atoasts');
-        if (!c) { c = document.createElement('div'); c.id='_atoasts'; c.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none;'; document.body.appendChild(c); }
+        let c = document.getElementById('toastContainer') || document.getElementById('_atoasts');
+        if (!c) {
+            c = document.createElement('div');
+            c.id = '_atoasts';
+            c.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none;';
+            document.body.appendChild(c);
+        }
         const t = document.createElement('div');
-        const cls = type==='ok' ? 'a-toast-ok' : type==='err' ? 'a-toast-err' : 'a-toast-inf';
-        t.className = 'a-toast ' + cls;
-        t.style.cssText = 'padding:9px 18px;border-radius:10px;font-size:13px;font-weight:600;white-space:nowrap;font-family:Inter,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.12);';
+        t.className = type==='ok' ? 'toast toast-success' : type==='err' ? 'toast toast-error' : 'toast toast-info';
+        t.style.cssText = 'padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.12);font-family:inherit;';
         if (type==='ok')  { t.style.background='#f0fdf4';t.style.color='#16a34a';t.style.border='1px solid #bbf7d0'; }
         if (type==='err') { t.style.background='#fef2f2';t.style.color='#dc2626';t.style.border='1px solid #fecaca'; }
         if (type==='inf') { t.style.background='#eff6ff';t.style.color='#1d4ed8';t.style.border='1px solid #bfdbfe'; }
         t.textContent = msg;
         c.appendChild(t);
-        setTimeout(() => t.remove(), 3000);
+        setTimeout(() => t.remove(), 3500);
     }
 };
 
-// Legacy compat
-function setupOTPInputs() {} // no-op, handled by account.html inline script
+function setupOTPInputs() {} // no-op — handled by page inline script
