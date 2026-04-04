@@ -105,57 +105,162 @@
     <div class="modal-overlay" id="authModal">
         <div class="modal auth-modal">
             <button class="modal-close" onclick="Auth.hideLoginModal()">✕</button>
-            
-            <div class="auth-header">
-                <div class="logo">Conitek</div>
-                <h2>Welcome</h2>
-                <p>Login or create account to start reselling</p>
-            </div>
-            
-            <!-- Phone Step -->
+
+            <!-- Step 1: Phone -->
             <div id="phoneStep">
+                <div class="auth-header">
+                    <div class="logo">Conitek</div>
+                    <h2>Welcome!</h2>
+                    <p>Enter mobile number to continue</p>
+                </div>
                 <div class="form-group">
-                    <label>Phone Number</label>
-                    <input type="tel" class="form-control" id="authPhone" placeholder="Enter 10-digit number" maxlength="10">
+                    <label>Mobile Number</label>
+                    <div style="display:flex;align-items:center;border:2px solid #e5e7eb;border-radius:10px;overflow:hidden;background:#fafafa;">
+                        <span style="padding:12px;background:#f0f0f0;color:#555;font-weight:600;font-size:14px;border-right:1px solid #e5e7eb;white-space:nowrap;flex-shrink:0;">🇮🇳 +91</span>
+                        <input type="tel" id="authPhone" maxlength="10" inputmode="numeric"
+                               placeholder="98765 43210"
+                               style="all:unset;flex:1;padding:12px 14px;font-size:16px;color:#111;font-family:inherit;"
+                               oninput="this.value=this.value.replace(/\D/g,'')"
+                               onkeypress="if(event.key==='Enter')Auth.sendLoginOTP()">
+                    </div>
                 </div>
-                <button class="btn btn-primary btn-full btn-lg" id="sendOtpBtn" onclick="Auth.sendLoginOTP()">
-                    Send OTP
+                <button class="btn btn-primary btn-full" id="sendOtpBtn" onclick="Auth.sendLoginOTP()" style="padding:14px;font-size:15px;">
+                    Send OTP →
                 </button>
             </div>
-            
-            <!-- OTP Step -->
-            <div id="otpStep" class="hidden">
-                <p class="text-center text-muted mb-2">Enter the 6-digit OTP sent to your phone</p>
-                <div class="otp-inputs">
-                    <input type="text" maxlength="1" inputmode="numeric">
-                    <input type="text" maxlength="1" inputmode="numeric">
-                    <input type="text" maxlength="1" inputmode="numeric">
-                    <input type="text" maxlength="1" inputmode="numeric">
-                    <input type="text" maxlength="1" inputmode="numeric">
-                    <input type="text" maxlength="1" inputmode="numeric">
+
+            <!-- Step 2: OTP -->
+            <div id="otpStep" style="display:none;">
+                <div class="auth-header">
+                    <h2>Enter OTP</h2>
+                    <p>6-digit code sent to <strong id="displayPhone"></strong></p>
                 </div>
-                <button class="btn btn-primary btn-full btn-lg mt-2" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()">
-                    Verify OTP
+
+                <!-- Hidden real input — captures keyboard on mobile -->
+                <input type="tel" id="otpHiddenInput" inputmode="numeric" maxlength="6"
+                       autocomplete="one-time-code"
+                       style="position:absolute;opacity:0;width:1px;height:1px;left:-9999px;">
+
+                <!-- Visual OTP cells — divs, not inputs, so no CSS conflict -->
+                <div id="otpCells" onclick="document.getElementById('otpHiddenInput').focus()"
+                     style="display:flex;flex-direction:row;gap:8px;justify-content:center;margin:20px 0;cursor:text;">
+                    <div class="otp-cell" id="cell0" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;position:relative;"></div>
+                    <div class="otp-cell" id="cell1" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;"></div>
+                    <div class="otp-cell" id="cell2" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;"></div>
+                    <div class="otp-cell" id="cell3" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;"></div>
+                    <div class="otp-cell" id="cell4" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;"></div>
+                    <div class="otp-cell" id="cell5" style="width:46px;height:54px;border:2px solid #e5e7eb;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#111;flex-shrink:0;transition:all .15s;"></div>
+                </div>
+
+                <button class="btn btn-primary btn-full" id="verifyOtpBtn" onclick="Auth.verifyLoginOTP()" style="padding:14px;font-size:15px;">
+                    Verify OTP ✓
                 </button>
-                <div class="resend-otp">
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-size:13px;color:#888;">
                     <span id="resendTimer"></span>
-                    <button id="resendOtpBtn" onclick="Auth.resendOTP()" disabled>Resend OTP</button>
+                    <button id="resendOtpBtn" onclick="Auth.resendOTP()" disabled
+                            style="background:none;border:none;color:#6c47ff;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit;">
+                        Resend OTP
+                    </button>
                 </div>
             </div>
-            
-            <!-- Name Step (New User) -->
-            <div id="nameStep" class="hidden">
-                <p class="text-center text-muted mb-2">Almost there! Tell us your name</p>
+
+            <!-- Step 3: Name (new user) -->
+            <div id="nameStep" style="display:none;">
+                <div class="auth-header">
+                    <div style="font-size:36px;margin-bottom:8px;">👋</div>
+                    <h2>Almost there!</h2>
+                    <p>What should we call you?</p>
+                </div>
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" class="form-control" id="authName" placeholder="Enter your full name">
+                    <input type="text" class="form-control" id="authName" placeholder="Enter your full name"
+                           onkeypress="if(event.key==='Enter')Auth.completeRegistration()">
                 </div>
-                <button class="btn btn-primary btn-full btn-lg" onclick="Auth.completeRegistration()">
-                    Complete Registration
+                <button class="btn btn-primary btn-full" onclick="Auth.completeRegistration()" style="padding:14px;font-size:15px;">
+                    Continue →
                 </button>
             </div>
         </div>
     </div>
+
+    <!-- OTP Cell Engine — works on every page -->
+    <script>
+    (function(){
+        function initOTP(){
+            const hidden = document.getElementById('otpHiddenInput');
+            const cells  = [0,1,2,3,4,5].map(i => document.getElementById('cell'+i));
+            if (!hidden || !cells[0]) return;
+
+            const PRIMARY = '#6c47ff';
+
+            function render(val){
+                cells.forEach((c,i)=>{
+                    if(!c) return;
+                    c.textContent = val[i] || '';
+                    const filled  = !!val[i];
+                    const active  = i === Math.min(val.length, 5);
+                    c.style.borderColor = (filled||active) ? PRIMARY : '#e5e7eb';
+                    c.style.background  = (filled||active) ? '#f5f0ff' : '#fafafa';
+                    // cursor blink on active empty cell
+                    if(active && !filled){
+                        if(!c.querySelector('.cur')){
+                            const cur = document.createElement('span');
+                            cur.className='cur';
+                            cur.style.cssText='display:inline-block;width:2px;height:26px;background:'+PRIMARY+';animation:blink .9s step-end infinite;vertical-align:middle;';
+                            c.appendChild(cur);
+                        }
+                    } else {
+                        const cur = c.querySelector('.cur');
+                        if(cur) cur.remove();
+                    }
+                });
+            }
+
+            // Add blink keyframe once
+            if(!document.getElementById('_otp_style')){
+                const s=document.createElement('style');
+                s.id='_otp_style';
+                s.textContent='@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}';
+                document.head.appendChild(s);
+            }
+
+            hidden.addEventListener('focus', ()=> render(hidden.value));
+            hidden.addEventListener('blur',  ()=> cells.forEach(c=>{
+                c.style.borderColor = c.textContent ? PRIMARY : '#e5e7eb';
+                c.style.background  = c.textContent ? '#f5f0ff' : '#fafafa';
+                const cur=c.querySelector('.cur'); if(cur) cur.remove();
+            }));
+            hidden.addEventListener('input', ()=>{
+                let v = hidden.value.replace(/\D/g,'').slice(0,6);
+                hidden.value = v;
+                render(v);
+                if(v.length===6) setTimeout(()=> Auth.verifyLoginOTP(), 250);
+            });
+            hidden.addEventListener('keydown', e=>{ if(e.key==='Enter') Auth.verifyLoginOTP(); });
+            hidden.addEventListener('paste', e=>{
+                e.preventDefault();
+                const p = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
+                hidden.value = p; render(p);
+                if(p.length===6) setTimeout(()=> Auth.verifyLoginOTP(), 300);
+            });
+
+            document.getElementById('otpCells')?.addEventListener('click', ()=> hidden.focus());
+
+            // Expose globals for auth.js
+            window.getOTPValue = ()=> hidden.value;
+            window.clearOTP    = ()=>{ hidden.value=''; render(''); };
+            window.focusOtpInput = ()=> hidden.focus();
+            window.shakeOTP    = ()=>{
+                cells.forEach(c=>{ c.style.borderColor='#ef4444'; c.style.background='#fef2f2'; });
+                setTimeout(()=>{ hidden.value=''; render(''); }, 600);
+            };
+        }
+
+        // Run now or after DOM ready
+        if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initOTP);
+        else initOTP();
+    })();
+    </script>
     
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
